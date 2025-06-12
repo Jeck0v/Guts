@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sha1 = "0.6"
+anyhow = "1.0"
+hex = "0.4.3"
