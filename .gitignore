@@ -1,0 +1,41 @@
+# === Rust build files ===
+/target
+**/*.rs.bk
+
+# === Cargo specific ===
+/Cargo.lock
+/.cargo/
+
+# === IDEs and editors ===
+# VS Code
+.vscode/
+/*.code-workspace
+
+# IntelliJ / CLion / RustRover
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# === System files ===
+.DS_Store
+Thumbs.db
+
+# === Logs and misc ===
+*.log
+*.tmp
+*.bak
+
+# === Tests output ===
+/test-output/
+/coverage/
+
+# === Ratatui or crossterm temp files ===
+*.swp
+*.swo
+
+# === Optional ===
+# Uncomment if you use dotenv
+.env
