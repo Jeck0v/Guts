@@ -1,8 +1,8 @@
 use anyhow::Result;
-mod cli;
-mod internals;
+mod commands;
+mod core;
 
-use cli::hash_object::run_hash_object_command;
+use commands::hash_object::run_hash_object_command;
 
 fn main() -> Result<()> {
     // Recup arg1 -> file path

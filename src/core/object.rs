@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use std::fs;
-use crate::internals::hash;
+use crate::core::hash;
 
 pub fn hash_blob_from_path(path: &str) -> Result<String> {
     let content = fs::read(path)
