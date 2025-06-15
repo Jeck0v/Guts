@@ -1,6 +1,6 @@
 # Git from Scratch – Student Project
 
-This project involves reimplementing core Git functionality in Python. It will help you understand Git's internal architecture and make you comfortable with both its plumbing and porcelain commands.
+This project involves reimplementing core Git functionality in Rust. It will help you understand Git's internal architecture and make you comfortable with both its plumbing and porcelain commands.
 
 ## 🎯 Project Scope
 
