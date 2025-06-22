@@ -2,5 +2,5 @@ mod core;
 mod commands;
 
 fn main() {
-    println!("Hello, world!");
+   println!("Hello, world!");
 }
