@@ -39,3 +39,4 @@ Thumbs.db
 # === Optional ===
 # Uncomment if you use dotenv
 .env
+.cursorrules
