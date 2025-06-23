@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{hash_object, init};
+use crate::commands::{hash_object, init, cat_file};
 
 #[derive(Parser)]
 #[command(name = "guts", version, author, about = "A Git implementation in Rust like Guts")]
@@ -16,4 +16,7 @@ pub enum Commands {
 
     /// Hash a file as a Git blob
     HashObject(hash_object::HashObjectArgs),
+
+    /// Read a blob 
+    CatFile(cat_file::CatFileArgs),
 }

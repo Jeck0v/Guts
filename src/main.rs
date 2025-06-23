@@ -11,6 +11,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Init(args) => guts::commands::init::run(&args)?,
         Commands::HashObject(args) => guts::commands::hash_object::run(&args)?,
+        Commands::CatFile(args) => guts::commands::cat_file::run(&args)?,
     }
 
     Ok(())
