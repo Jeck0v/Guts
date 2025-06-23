@@ -10,11 +10,11 @@ You will implement a subset of Git commands, both low-level (plumbing) and user-
 
 ## 🛠 Plumbing Commands
 
-### `git hash-object <file>`
+### `git hash-object <file>` :white_check_mark:
 - **Creates a blob** object from file content and writes its SHA-1 to stdout.
 - ❌ Reject directories or missing files.
 
-### `git cat-file -t|-p <oid>`
+### `git cat-file -t|-p <oid>` :white_check_mark:
 - `-t`: Print object type.
 - `-p`: Pretty-print blob/tree/commit content.
 - ❌ Reject invalid OIDs or missing options.
@@ -32,7 +32,7 @@ You will implement a subset of Git commands, both low-level (plumbing) and user-
 
 ## 🧑‍💻 Porcelain Commands
 
-### `git init [<dir>]`
+### `git init [<dir>]` :white_check_mark:
 - Initializes a Git repository in the given directory.
 - Create .git/objects, .git/refs/heads, HEAD, and minimal config
 
