@@ -11,3 +11,33 @@ pub trait GitObject {
         full
     }
 }
+
+pub struct TreeEntry {
+    pub mode: String,
+    pub name: String,
+    pub hash: [u8, 20]
+}
+
+pub struct Tree {
+    pub entries: Vec<TreeEntry>,
+}
+
+impl GitObject for Tree {
+    fn serialize(&self) -> Vec<u8> {
+        let mut content = Vec::new();
+
+        for entry in &self.entries {
+            content.extend(format!("{} {}\0", entry.mode, entry.name).as_bytes());
+            content.extend(&entry.hash)
+        }
+
+        let header = format!("tree {}\0", content.len());
+        let mut out = header.into_bytes();
+        out.extend(content);
+        out
+    }
+
+    fn object_type(&self) -> &'static str {
+        "tree"
+    }
+}
