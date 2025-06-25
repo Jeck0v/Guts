@@ -43,11 +43,28 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
     let content = fs::read(&object_path)
         .with_context(|| format!("failed to read object file at {}", object_path.display()))?;
 
-    // Parse the Git object (header and body)
-    let (header, body) = cat::parse_object(&content)?;
+    // Parse the Git object
+    let parsed_obj = cat::parse_object(&content)?;
 
-    // Print the header and the body
-    println!("{header}\n{body}");
+    // Print the parsed content based on its type
+    match parsed_obj {
+        cat::ParsedObject::Blob(data) => {
+            // Print blob content as UTF-8 string if possible, else bytes debug
+            match std::str::from_utf8(&data) {
+                Ok(text) => println!("{}", text),
+                Err(_) => println!("{:?}", data),
+            }
+        }
+        cat::ParsedObject::Tree(entries) => {
+            for entry in entries {
+                println!("{} {} {}", entry.mode, entry.name, hex::encode(entry.hash));
+            }
+        }
+        cat::ParsedObject::Other(obj_type, data) => {
+            println!("Unknown object type: {}", obj_type);
+            println!("{:?}", data);
+        }
+    }
 
     Ok(())
 }
