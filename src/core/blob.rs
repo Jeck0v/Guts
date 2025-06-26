@@ -15,7 +15,7 @@ impl GitObject for Blob {
         "blob"
     }
 
-    fn content(&self) -> &[u8] {
-        &self.data
+    fn content(&self) -> Vec<u8> {
+        self.data.clone()
     }
 }

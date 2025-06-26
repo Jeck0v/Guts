@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{hash_object, init, cat_file};
+use crate::commands::{hash_object, init, cat_file, write_tree};
 
 #[derive(Parser)]
 #[command(name = "guts", version, author, about = "A Git implementation in Rust like Guts")]
@@ -19,4 +19,8 @@ pub enum Commands {
 
     /// Read a blob 
     CatFile(cat_file::CatFileArgs),
+
+    // Write a tree
+    WriteTree(write_tree::WriteTreeArgs),
+
 }
