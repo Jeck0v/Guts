@@ -6,6 +6,8 @@ use clap::Args;
 
 use crate::core::cat;
 
+use crate::core::cat::ParsedObject;
+
 #[derive(Args)]
 pub struct CatFileArgs {
     /// Partial or full SHA of the object to display
@@ -38,9 +40,19 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
     let content = fs::read(&object_path)
         .with_context(|| format!("failed to read object file at {}", object_path.display()))?;
 
-    let (header, body) = cat::parse_object(&content)?;
-
-    println!("{header}\n{body}");
+    match cat::parse_object(&content)? {
+    ParsedObject::Tree(entries) => {
+        for entry in entries {
+            println!("{} {} {:x?}", entry.mode, entry.name, entry.hash.iter().map(|byte| format!("{:02x}", byte)).collect::<String>());
+        }
+    }
+    ParsedObject::Blob(data) => {
+        println!("{}", String::from_utf8_lossy(&data));
+    }
+    ParsedObject::Other(obj_type, _) => {
+        println!("Unsupported object type: {}", obj_type);
+    }
+}
 
     Ok(())
 }
