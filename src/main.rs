@@ -1,10 +1,10 @@
+mod terminal;
+
 use anyhow::Result;
 use clap::Parser;
 
 use guts::cli::{Cli, Commands};
 
-/// Entry point of the Guts CLI application
-/// Parses the command-line arguments and dispatches to the corresponding command
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -13,6 +13,7 @@ fn main() -> Result<()> {
         Commands::HashObject(args) => guts::commands::hash_object::run(&args)?,
         Commands::CatFile(args) => guts::commands::cat_file::run(&args)?,
         Commands::WriteTree(args) => guts::commands::write_tree::run(&args)?,
+        Commands::Terminal => terminal::run_terminal()?,
     }
 
     Ok(())

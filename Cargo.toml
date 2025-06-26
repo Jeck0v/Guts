@@ -8,6 +8,8 @@ anyhow = "1.0.98"
 clap = { version = "4.5.40", features = ["derive"] }
 sha1 = "0.10"
 hex = "0.4"
+ratatui = "0.25"
+crossterm = "0.27"
 
 [dev-dependencies]
 assert_fs = "1.0"
