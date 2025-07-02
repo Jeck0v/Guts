@@ -41,3 +41,8 @@ Thumbs.db
 
 # === Project ===
 .guts/
+
+
+# === Not currently working ====
+flake.md
+flake.nix

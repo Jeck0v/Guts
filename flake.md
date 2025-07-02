@@ -1,5 +1,6 @@
-# 🧬 `nix` Support for `guts`
+# ⛔Does not currently work⛔
 
+## 🧬 `nix` Support for `guts`
 > Guts is a Git-like version control system written in Rust.  
 > With Nix, you can build, run, install, and develop `guts` easily  on Linux, macOS, and even WSL.
 
