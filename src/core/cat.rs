@@ -1,6 +1,7 @@
 use std::{path::{Path, PathBuf}};
 use anyhow::{anyhow, Result};
 use crate::core::object::TreeEntry;
+use crate::core::object::Commit;
 
 /// Enum representing parsed Git objects.
 /// - Blob holds raw file data.
@@ -9,6 +10,7 @@ use crate::core::object::TreeEntry;
 pub enum ParsedObject {
     Blob(Vec<u8>),
     Tree(Vec<TreeEntry>),
+    Commit(Commit),
     Other(String, Vec<u8>)
 }
 
@@ -61,6 +63,11 @@ pub fn parse_object(data: &[u8]) -> Result<ParsedObject> {
             // Just return the blob content bytes
             Ok(ParsedObject::Blob(body.to_vec()))
         }
+        "commit" => {
+            let commit = parse_commit_body(body)?;
+            // Just return the blob content bytes
+            Ok(ParsedObject::Commit(commit))
+        }
         _ => {
             // For any other Git object type, return raw data with type
             Ok(ParsedObject::Other(obj_type.to_string(), body.to_vec()))
@@ -111,3 +118,43 @@ pub fn parse_tree_body(data: &[u8]) -> Result<Vec<TreeEntry>> {
 
     Ok(entries)
 }
+
+
+fn parse_commit_body(body: &[u8]) -> Result<Commit> {
+    let text = std::str::from_utf8(body)?;
+    let mut tree = String::new();
+    let mut parent = None;
+    let mut message = String::new();
+    let mut in_message = false;
+
+    for line in text.lines() {
+        if line.trim().is_empty() {
+            in_message = true;
+            continue;
+        }
+
+        if in_message {
+            message.push_str(line);
+            message.push('\n');
+            continue;
+        }
+
+        if let Some(rest) = line.strip_prefix("tree ") {
+            tree = rest.to_string();
+        } else if let Some(rest) = line.strip_prefix("parent ") {
+            parent = Some(rest.to_string());
+        }
+    }
+
+    if tree.is_empty() {
+        return Err(anyhow!("commit object missing 'tree' field"));
+    }
+
+
+    Ok(Commit {
+        tree,
+        parent,
+        message: message.trim_end().to_string(),
+    })
+}
+

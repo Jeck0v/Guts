@@ -49,6 +49,14 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
     ParsedObject::Blob(data) => {
         println!("{}", String::from_utf8_lossy(&data));
     }
+    ParsedObject::Commit(data) => {
+        println!("Commit :");
+        println!("tree: {} ", data.tree);
+        if let Some(parent) = &data.parent {
+            println!("parent: {}", parent);
+        }
+        println!("message: {}", data.message);
+    }
     ParsedObject::Other(obj_type, _) => {
         println!("Unsupported object type: {}", obj_type);
     }
