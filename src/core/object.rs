@@ -1,3 +1,5 @@
+use chrono::Utc;
+
 /// Trait representing a Git object that can be serialized and hashed.
 /// Any Git object (blob, tree, commit, etc.) should implement this trait.
 pub trait GitObject {
@@ -68,6 +70,43 @@ impl GitObject for Tree {
             // Add the 20-byte hash bytes directly
             content.extend(&entry.hash);
         }
+
+        content
+    }
+}
+
+
+pub struct Commit {
+    pub tree: String,
+    pub parent: Option<String>,
+    pub message: String,
+}
+
+impl GitObject for Commit {
+    fn object_type(&self) -> &str {
+        "commit"
+    }
+
+    fn content(&self) -> Vec<u8> {
+        let mut content = Vec::new();
+
+        content.extend(format!("tree {}\n", self.tree).as_bytes());
+
+        if let Some(ref p) = self.parent {
+            content.extend(format!("parent {}\n", p).as_bytes());
+        }
+
+        let timestamp = Utc::now().timestamp();
+        let timezone = "+0000";
+
+        let author_line = format!("author guts <guts@example.com> {} {}\n", timestamp, timezone);
+        let committer_line = format!("committer guts <guts@example.com> {} {}\n", timestamp, timezone);
+
+        content.extend(author_line.as_bytes());
+        content.extend(committer_line.as_bytes());
+        content.extend(b"\n");
+
+        content.extend(self.message.as_bytes());
 
         content
     }
