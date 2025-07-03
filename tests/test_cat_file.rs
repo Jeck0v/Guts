@@ -5,6 +5,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Args;
 
 use guts::core::cat;
+use guts::core::object::Commit;
 
 #[derive(Args)]
 pub struct CatFileArgs {
@@ -60,6 +61,15 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
                 println!("{} {} {}", entry.mode, entry.name, hex::encode(entry.hash));
             }
         }
+        cat::ParsedObject::Commit(data) => {
+            println!("Commit :");
+            println!("tree: {}", data.tree);
+            if let Some(parent) = &data.parent {
+                println!("parent: {}", parent);
+            }
+            println!("message: {}", data.message);
+        }
+    
         cat::ParsedObject::Other(obj_type, data) => {
             println!("Unknown object type: {}", obj_type);
             println!("{:?}", data);

@@ -3,10 +3,11 @@ use anyhow::{anyhow, Result};
 use crate::core::object::TreeEntry;
 use crate::core::object::Commit;
 
-/// Enum representing parsed Git objects.
-/// - Blob holds raw file data.
-/// - Tree holds a list of TreeEntry (files/directories with mode, name, hash).
-/// - Other represents any other Git object type with its raw bytes.
+/// Enum representing different parsed Git object types.
+/// - Blob holds raw file content bytes.
+/// - Tree holds a list of `TreeEntry` structs representing files/directories.
+/// - Commit holds a parsed commit object with metadata.
+/// - Other holds unknown object types with their raw bytes.
 pub enum ParsedObject {
     Blob(Vec<u8>),
     Tree(Vec<TreeEntry>),
@@ -15,11 +16,11 @@ pub enum ParsedObject {
 }
 
 /// Given the root `.guts` directory and a SHA-1 hash string,
-/// returns the file path where the object is stored.
+/// constructs and returns the path to the object file.
 ///
-/// Git stores objects as:
-///   .guts/objects/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
-/// where XX = first two hex chars of SHA, and YYYYYY... = rest
+/// Git stores objects in subdirectories named by the first two
+/// characters of their SHA, with the remainder as the filename:
+/// `.guts/objects/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY`
 pub fn get_object_path(guts_dir: &Path, sha: &str) -> PathBuf {
     let (dir, file) = sha.split_at(2);
     guts_dir.join("objects").join(dir).join(file)
@@ -28,98 +29,109 @@ pub fn get_object_path(guts_dir: &Path, sha: &str) -> PathBuf {
 /// Parses raw Git object data into a structured `ParsedObject`.
 ///
 /// Git object format:
-///   <type> <size>\0<content>
-/// 
-/// This function:
-/// - Finds the first null byte to separate header and body
-/// - Parses header into object type and size (size checked but not strictly used)
-/// - Based on object type, it further parses the body:
-///     - For "tree", it parses entries into `TreeEntry` structs
-///     - For "blob", it returns raw bytes
-///     - For others, returns type + raw bytes
+///   "<type> <size>\0<content>"
+///
+/// Steps:
+/// - Find the first null byte to split header and content.
+/// - Parse header for object type and size (size is parsed but not verified).
+/// - Based on type, parse the body:
+///     - "tree": parse as list of TreeEntry structs
+///     - "blob": raw bytes returned as-is
+///     - "commit": parse as Commit struct
+///     - others: return type and raw bytes unchanged
 pub fn parse_object(data: &[u8]) -> Result<ParsedObject> {
-    // Find null byte separator between header and body
+    // Find the position of the null byte separating header from body
     let null_pos = data.iter()
         .position(|&b| b == 0)
-        .ok_or_else(|| anyhow!("invalid object format : not null"))?;
+        .ok_or_else(|| anyhow!("invalid object format : missing null separator"))?;
 
-    // Parse header as UTF-8 string slice
+    // Interpret header bytes as UTF-8 string
     let header = std::str::from_utf8(&data[..null_pos])?;
+    // The remainder after the null byte is the body/content
     let body = &data[null_pos + 1..];
 
     // Header format: "<type> <size>"
     let mut parts = header.split(' ');
     let obj_type = parts.next().ok_or_else(|| anyhow!("Invalid header format"))?;
     let size_str = parts.next().ok_or_else(|| anyhow!("Invalid header format"))?;
-    let _size: usize = size_str.parse()?; // We parse but do not verify body length here
+    let _size: usize = size_str.parse()?; // Size parsed but not strictly enforced here
 
+    // Dispatch parsing based on object type
     match obj_type {
         "tree" => {
-            // Parse tree entries from body bytes
+            // Parse tree object body into entries
             let entries = parse_tree_body(body)?;
             Ok(ParsedObject::Tree(entries))
         }
         "blob" => {
-            // Just return the blob content bytes
+            // Blob object: raw data as is
             Ok(ParsedObject::Blob(body.to_vec()))
         }
         "commit" => {
+            // Commit object: parse structured commit metadata
             let commit = parse_commit_body(body)?;
-            // Just return the blob content bytes
             Ok(ParsedObject::Commit(commit))
         }
         _ => {
-            // For any other Git object type, return raw data with type
+            // Unknown or unsupported object type: keep raw data and type
             Ok(ParsedObject::Other(obj_type.to_string(), body.to_vec()))
         }
     }
 }
 
-/// Parses the body bytes of a Git tree object into a list of TreeEntry.
+/// Parses the body bytes of a Git tree object into a vector of `TreeEntry`.
 ///
-/// Tree entries format in raw bytes:
-///   <mode> SP <filename> NULL <20-byte SHA1 hash>
-/// Repeated until all entries are parsed.
+/// Tree entries format (raw bytes):
+///   <mode> SPACE <filename> NULL <20-byte SHA1 hash>
+/// Entries repeat until the entire body is parsed.
 ///
-/// Returns a Vec of TreeEntry structs or an error.
+/// Returns a vector of parsed `TreeEntry` or an error if format is invalid.
 pub fn parse_tree_body(data: &[u8]) -> Result<Vec<TreeEntry>> {
     let mut entries = Vec::new();
     let mut i = 0;
 
     while i < data.len() {
-        // Parse the file mode string until space (e.g. "100644")
+        // Parse mode string (e.g. "100644") up to the space character
         let mode_end = data[i..].iter()
             .position(|&b| b == b' ')
-            .ok_or_else(|| anyhow!("invalid tree entry: no space after mode"))?;
+            .ok_or_else(|| anyhow!("invalid tree entry: missing space after mode"))?;
         let mode = std::str::from_utf8(&data[i..i + mode_end])?.to_string();
 
-        i += mode_end + 1; // Move past mode + space
+        i += mode_end + 1; // Advance past mode and space
 
-        // Parse the file name string until NULL byte
+        // Parse filename string up to the null byte
         let name_end = data[i..].iter()
             .position(|&b| b == 0)
-            .ok_or_else(|| anyhow!("invalid tree entry: no null byte after filename"))?;
+            .ok_or_else(|| anyhow!("invalid tree entry: missing null byte after filename"))?;
         let name = std::str::from_utf8(&data[i..i + name_end])?.to_string();
 
-        i += name_end + 1; // Move past filename + null byte
+        i += name_end + 1; // Advance past filename and null byte
 
-        // Next 20 bytes are SHA1 hash of the entry object (blob or subtree)
+        // Next 20 bytes represent SHA1 hash of the referenced object
         if i + 20 > data.len() {
             return Err(anyhow!("invalid tree entry: incomplete SHA1 hash"));
         }
         let mut hash = [0u8; 20];
         hash.copy_from_slice(&data[i..i + 20]);
 
-        i += 20; // Move past hash bytes
+        i += 20; // Advance past hash bytes
 
-        // Collect the parsed entry
+        // Add parsed entry to list
         entries.push(TreeEntry { mode, name, hash });
     }
 
     Ok(entries)
 }
 
-
+/// Parses the body bytes of a commit object into a `Commit` struct.
+///
+/// Commit body format is plaintext with lines:
+///   tree <tree SHA>
+///   parent <parent SHA>  (optional)
+///   <empty line>
+///   <commit message>
+///
+/// Returns the parsed commit or an error if mandatory fields are missing.
 fn parse_commit_body(body: &[u8]) -> Result<Commit> {
     let text = std::str::from_utf8(body)?;
     let mut tree = String::new();
@@ -129,16 +141,19 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
 
     for line in text.lines() {
         if line.trim().is_empty() {
+            // Empty line marks start of commit message
             in_message = true;
             continue;
         }
 
         if in_message {
+            // Accumulate commit message lines
             message.push_str(line);
             message.push('\n');
             continue;
         }
 
+        // Parse tree and parent lines
         if let Some(rest) = line.strip_prefix("tree ") {
             tree = rest.to_string();
         } else if let Some(rest) = line.strip_prefix("parent ") {
@@ -150,11 +165,9 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
         return Err(anyhow!("commit object missing 'tree' field"));
     }
 
-
     Ok(Commit {
         tree,
         parent,
         message: message.trim_end().to_string(),
     })
 }
-
