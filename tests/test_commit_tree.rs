@@ -21,9 +21,9 @@ fn test_parse_commit_object() {
     // Étape 4 : vérifier que le commit parsé correspond à ce qu'on a créé
     match parsed {
         ParsedObject::Commit(parsed_commit) => {
-            assert_eq!(parsed_commit.tree, commit.tree);
-            assert_eq!(parsed_commit.parent, commit.parent);
-            assert_eq!(parsed_commit.message, commit.message);
+            assert_eq!(parsed_commit.tree, commit.tree, "Tree SHA mismatch");
+            assert_eq!(parsed_commit.parent, commit.parent, "Parent SHA mismatch");
+            assert_eq!(parsed_commit.message, commit.message, "Message mismatch");
         }
         ParsedObject::Other(obj_type, _) => {
             panic!("Unexpected object type: got ParsedObject::Other: {}", obj_type);
