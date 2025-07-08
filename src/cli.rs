@@ -24,5 +24,5 @@ pub enum Commands {
     WriteTree(write_tree::WriteTreeArgs),
 
     /// Launch graphical terminal UI
-    Terminal,
+    Tui,
 }

@@ -1,22 +1,22 @@
-use ratatui::{
-    prelude::*,
-    widgets::{Block, Borders, Tabs},
-};
-
+use ratatui::{prelude::*, widgets::*};
 use crate::terminal::app::App;
 
-pub fn draw_ui(f: &mut Frame, app: &App) {
-    let size = f.size();
+pub fn draw_ui(f: &mut Frame, app: &mut App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+        ])
+        .split(f.size());
 
-    let titles = app
-        .tabs
-        .iter()
-        .map(|t| t.title.as_str())
-        .collect::<Vec<&str>>();
+    let tabs = Tabs::new(vec!["CLI", "Editor"].into_iter().map(Line::from).collect())
+        .select(app.current_tab as usize)
+        .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
 
-    let tabs = Tabs::new(titles)
-        .select(app.selected_tab)
-        .block(Block::default().borders(Borders::ALL).title("Onglets"));
+    f.render_widget(tabs, chunks[0]);
 
-    f.render_widget(tabs, size);
+    let content = Paragraph::new(format!("Current tab: {}", app.current_tab.title()));
+    f.render_widget(content, chunks[1]);
 }

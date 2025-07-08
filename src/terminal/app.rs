@@ -1,30 +1,21 @@
-use crate::terminal::tabs::Tab;
+use crate::terminal::tab::Tab;
 
 pub struct App {
-    pub tabs: Vec<Tab>,
-    pub selected_tab: usize,
+    pub current_tab: Tab,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
-            tabs: vec![
-                Tab::new("Terminal"),
-                Tab::new("Éditeur"),
-            ],
-            selected_tab: 0,
+            current_tab: Tab::Cli,
         }
     }
 
     pub fn next_tab(&mut self) {
-        self.selected_tab = (self.selected_tab + 1) % self.tabs.len();
+        self.current_tab = self.current_tab.next();
     }
 
-    pub fn previous_tab(&mut self) {
-        if self.selected_tab == 0 {
-            self.selected_tab = self.tabs.len() - 1;
-        } else {
-            self.selected_tab -= 1;
-        }
+    pub fn prev_tab(&mut self) {
+        self.current_tab = self.current_tab.previous();
     }
 }
