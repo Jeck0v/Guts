@@ -21,18 +21,19 @@ pub fn run_app() -> io::Result<()> {
         terminal.draw(|f| draw(f, &app))?;
 
         if event::poll(std::time::Duration::from_millis(200))? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
+            if let Event::Key(key_event) = event::read()? {
+                match key_event.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Char(c) => app.on_key(c),
                     KeyCode::Backspace => app.backspace(),
+                    KeyCode::Right => app.next_tab(),
+                    KeyCode::Left => app.prev_tab(),
                     _ => {}
                 }
             }
         }
     }
 
-    // Clean up
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;

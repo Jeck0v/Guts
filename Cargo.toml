@@ -10,6 +10,7 @@ sha1 = "0.10"
 hex = "0.4"
 ratatui = "0.25"
 crossterm = "0.27"
+tui-tree-widget = "0.16"
 
 [dev-dependencies]
 assert_fs = "1.0"

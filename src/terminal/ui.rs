@@ -2,16 +2,63 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Span, Line, Text},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Tabs},
     Frame,
 };
+use tui_tree_widget::Tree;
 
-
-use crate::terminal::app::App;
+use crate::terminal::app::{App, Tab};
 
 pub fn draw(f: &mut Frame, app: &App) {
     let size = f.size();
 
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(0)])
+        .split(size);
+
+    draw_tabs(f, app, layout[0]);
+
+    match app.tab {
+        Tab::Cli => draw_cli(f, app, layout[1]),
+        Tab::Editor => draw_editor_layout(f, app, layout[1]),
+    }
+}
+
+fn draw_tabs(f: &mut Frame, app: &App, area: Rect) {
+    let titles = ["CLI", "Editor"]
+        .iter()
+        .map(|t| Line::from(Span::styled(*t, Style::default())))
+        .collect();
+
+    let tabs = Tabs::new(titles)
+        .select(match app.tab {
+            Tab::Cli => 0,
+            Tab::Editor => 1,
+        })
+        .block(Block::default().title("GUTS - TUI").borders(Borders::ALL))
+        .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+
+    f.render_widget(tabs, area);
+}
+
+fn draw_cli(f: &mut Frame, app: &App, area: Rect) {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .split(area);
+
+    let editor = Paragraph::new(app.input.as_str())
+        .block(Block::default().title("CLI Input").borders(Borders::ALL));
+    f.render_widget(editor, layout[0]);
+
+    let tree = Tree::new(app.project_tree.clone())
+        .expect("Failed to create tree")
+        .block(Block::default().title("Project Tree").borders(Borders::ALL));
+    f.render_widget(tree, layout[1]);
+}
+
+fn draw_editor_layout(f: &mut Frame, app: &App, size: Rect) {
     let vertical = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
@@ -52,13 +99,8 @@ fn draw_editor(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_project_tree(f: &mut Frame, app: &App, area: Rect) {
-    let lines: Vec<Line> = app
-        .project_tree
-        .iter()
-        .map(|line| Line::from(Span::raw(line)))
-        .collect();
-
-    let tree = Paragraph::new(Text::from(lines))
+    let tree = Tree::new(app.project_tree.clone())
+        .expect("Failed to create tree")
         .block(Block::default().borders(Borders::ALL).title("Project Tree"));
 
     f.render_widget(tree, area);
