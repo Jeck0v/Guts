@@ -19,7 +19,7 @@ You will implement a subset of Git commands, both low-level (plumbing) and user-
 - `-p`: Pretty-print blob/tree/commit content.
 - ❌ Reject invalid OIDs or missing options.
 
-### `git write-tree`
+### `git write-tree` :white_check_mark:
 - Create a tree object from the staging area.
 - Writes SHA-1 of the tree to stdout.
 
