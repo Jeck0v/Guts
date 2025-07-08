@@ -1,21 +1,26 @@
-use crate::terminal::tab::Tab;
-
 pub struct App {
-    pub current_tab: Tab,
+    pub input: String,
+    pub project_tree: Vec<String>,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
-            current_tab: Tab::Cli,
+            input: String::new(),
+            project_tree: vec![
+                "src/".into(),
+                "├── main.rs".into(),
+                "├── lib.rs".into(),
+                "└── core/".into(),
+            ],
         }
     }
 
-    pub fn next_tab(&mut self) {
-        self.current_tab = self.current_tab.next();
+    pub fn on_key(&mut self, c: char) {
+        self.input.push(c);
     }
 
-    pub fn prev_tab(&mut self) {
-        self.current_tab = self.current_tab.previous();
+    pub fn backspace(&mut self) {
+        self.input.pop();
     }
 }

@@ -1,7 +1,5 @@
 pub mod app;
 pub mod ui;
-pub mod event;
-pub mod run;
-pub mod tab;
+pub mod run_app;
 
-pub use run::run_app;
+pub use run_app::run_app;
