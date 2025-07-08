@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree};
+use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree, status};
 
 #[derive(Parser)]
 #[command(name = "guts", version, author, about = "A Git implementation in Rust like Guts")]
@@ -25,5 +25,8 @@ pub enum Commands {
 
     // Commit a tree
     CommitTree(commit_tree::CommitObject),
+
+    // Get the status of the current repo
+    Status(status::StatusObject),
 
 }

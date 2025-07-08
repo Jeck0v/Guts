@@ -14,6 +14,7 @@ fn main() -> Result<()> {
         Commands::CatFile(args) => guts::commands::cat_file::run(&args)?,
         Commands::WriteTree(args) => guts::commands::write_tree::run(&args)?,
         Commands::CommitTree(args) => guts::commands::commit_tree::run(&args)?,
+        Commands::Status(args) => guts::commands::status::run(&args)?,
     }
 
     Ok(())
