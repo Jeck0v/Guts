@@ -46,3 +46,9 @@ Thumbs.db
 # === Not currently working ====
 flake.md
 flake.nix
+
+# === Chocolatery package manager ====
+# Automatically generated file
+guts-wpkg/*.nupkg
+# Rust binary, only used for local pack
+guts-wpkg/tools/guts.exe
