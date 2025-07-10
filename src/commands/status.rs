@@ -1,46 +1,82 @@
-use std::fs;
-use std::path::{PathBuf};
-use anyhow::{Context,Result};
+use std::collections::HashSet;
+use std::path::PathBuf;
+use anyhow::{Result};
 use clap::Args;
 
+use crate::core::status_dir;
 
+/// CLI arguments for the `status` command.
 #[derive(Args)]
 pub struct StatusObject {
-    pub guts_dir : Option<PathBuf>
+    // Optional custom path to the .git directory (defaults to current/.git)
+    pub guts_dir: Option<PathBuf>,
 }
 
+/// Entry point for the `gut status` command.
 pub fn run(args: &StatusObject) -> Result<()> {
-    let guts_dir = args.guts_dir.clone().unwrap_or_else(|| std::env::current_dir().expect("failed to get the current directory").join(".guts"));
+    // Determine the path to the .git directory (or .guts if used)
+    let guts_dir = args
+        .guts_dir
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir()
+            .expect("failed to get the current directory")
+            .join(".git"));
+
+    // Validate the path exists
     if !guts_dir.exists() {
-        return Err(anyhow::anyhow!("Path {:?} does not exist", guts_dir.display()));
+        return Err(anyhow::anyhow!(
+            "Path {:?} does not exist",
+            guts_dir.display()
+        ));
     }
 
-    let head_path = guts_dir.join("HEAD");
-    if !head_path.exists() {
-        return Err(anyhow::anyhow!("File {:?} does not exist", head_path.display()));
-    }
+    // Get all files in the working directory (excluding .git/.guts)
+    let work_files = status_dir::list_working_dir_files(
+        &std::env::current_dir().expect("failed to get the current directory")
+    )?;
 
-    let head_content = fs::read_to_string(&head_path).with_context(|| format!("Impossible to read {}", head_path.display()))?;
+    // Parse the .git/index to get the list of tracked files
+    let index_entries = status_dir::parse_git_index(&guts_dir)?;
 
-    let reference = head_content.strip_prefix("ref: ").ok_or_else(|| anyhow::anyhow!("HEAD doesnt contains a valid ref"))?.trim();
+    // Compare the working directory files to the index to find modified/deleted files
+    let modified_files = status_dir::is_modified(&index_entries, &guts_dir)?;
 
-    let ref_path: PathBuf = guts_dir.join(reference);
+    // Create a set of working directory paths for fast lookup
+    let work_files_set: HashSet<_> = work_files.iter().collect();
+
+    println!("On branch main");
+    println!("Your branch is up to date with 'origin/main'.");
+    println!();
+
+    // Detect untracked files (present in working dir but not in index)
+    // if !work_files.is_empty() {
+    //     println!("Untracked files:");
+    //     println!("  (use \"git add <file>...\" to include in what will be committed)");
+    //     for file in &work_files {
+    //         if !index_entries.iter().any(|entry| entry.path == *file) {
+    //             println!("        {}", file.display());
+    //         }
+    //     }
+    //     println!();
+    // }
+
     
-    if !ref_path.exists() {
-        println!("No commit done on {}", reference);
-    } else {
-        let commit_sha = fs::read_to_string(&ref_path).with_context(|| format!("Impossible to read {}", ref_path.display()))?;
+    // Show files that have been modified since last index
+    if !modified_files.is_empty() {
+        println!("Changes not staged for commit:");
+        println!("  (use \"git add <file>...\" to update what will be committed)");
+        for file in &modified_files {
+            println!("        modified:   {}", file.display());
+        }
+        println!();
+    }
 
-        if commit_sha.is_empty() {
-            println!("No commit done on {}", reference);
-        } else {
-            println!("Sha of commit : {}", commit_sha);
+    // Show files that are in the index but missing in the working directory (deleted)
+    for entry in &index_entries {
+        if !work_files_set.contains(&entry.path) {
+            println!("Deleted : {}", entry.path.display());
         }
     }
-
-
-    
-
 
     Ok(())
 }

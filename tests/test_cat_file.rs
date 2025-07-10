@@ -5,7 +5,6 @@ use anyhow::{anyhow, Context, Result};
 use clap::Args;
 
 use guts::core::cat;
-use guts::core::object::Commit;
 
 #[derive(Args)]
 pub struct CatFileArgs {
