@@ -23,7 +23,7 @@ You will implement a subset of Git commands, both low-level (plumbing) and user-
 - Create a tree object from the staging area.
 - Writes SHA-1 of the tree to stdout.
 
-### `git commit-tree <tree_sha> -m "msg" [-p <parent>]`
+### `git commit-tree <tree_sha> -m "msg" [-p <parent>]` :white_check_mark:
 - Creates a commit object pointing to a tree (and parent commit if any) and writes its oid to stdout
 - Requires `-m` message.
 - ❌ No annotated tags.
