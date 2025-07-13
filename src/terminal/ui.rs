@@ -1,109 +1,178 @@
+use crate::terminal::app::App;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style},
-    text::{Span, Line, Text},
-    widgets::{Block, Borders, Paragraph, Tabs},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 
-use crate::terminal::app::{App, Tab};
-
-pub fn draw(f: &mut Frame, app: &App) {
-    let size = f.size();
-
-    let layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(0)])
-        .split(size);
-
-    draw_tabs(f, app, layout[0]);
-
-    match app.tab {
-        Tab::Cli => draw_cli(f, app, layout[1]),
-        Tab::Editor => draw_editor_layout(f, app, layout[1]),
-    }
-}
-
-fn draw_tabs(f: &mut Frame, app: &App, area: Rect) {
-    let titles: Vec<_> = ["CLI", "Editor"]
-        .iter()
-        .map(|t| Line::from(Span::styled(*t, Style::default())))
-        .collect();
-
-    let tabs = Tabs::new(titles)
-        .select(match app.tab {
-            Tab::Cli => 0,
-            Tab::Editor => 1,
-        })
-        .block(Block::default().title("GUTS - TUI").borders(Borders::ALL))
-        .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
-
-    f.render_widget(tabs, area);
-}
-
-fn draw_cli(f: &mut Frame, app: &App, area: Rect) {
-    let layout = Layout::default()
+pub fn render(f: &mut Frame, app: &App) {
+    let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
+        .split(f.size());
+
+    // left panel - ASCII Art
+    render_ascii_art(f, chunks[0]);
+
+    // right panel - CLI Interface
+    render_cli_interface(f, chunks[1], app);
+}
+
+fn render_ascii_art(f: &mut Frame, area: Rect) {
+    let ascii_art = r#"
+         ██████╗  ██╗   ██╗████████╗ ███████╗
+        ██╔════╝ ██║   ██║╚══██╔══╝██╔════╝
+        ██║  ███╗██║   ██║   ██║   ███████╗
+        ██║   ██║██║   ██║   ██║   ╚════██║
+        ╚██████╔╝╚██████╔╝   ██║   ███████║
+         ╚═════╝  ╚═════╝    ╚═╝   ╚══════╝
+
+
+    ╔══════════════════════════╗
+    ║     Git-like VCS         ║
+    ║     Version Control      ║
+    ║     System in Rust       ║
+    ╚══════════════════════════╝
+
+    Available Commands:
+    • guts init
+    • guts hash-object
+    • guts cat-file
+    • guts write-tree
+    • ls, pwd, cd
+    • clear, exit
+
+    Navigation:
+    • ↑/↓ - Command history
+    • Ctrl+C - Quit
+    • Enter - Execute command
+
+    Soon:
+    • guts add .
+    • guts status
+    • guts commit -m "message"
+"#;
+
+    let paragraph = Paragraph::new(ascii_art)
+        .block(Block::default().borders(Borders::ALL))
+        .style(Style::default().fg(Color::White))
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true });
+
+    f.render_widget(paragraph, area);
+}
+
+fn render_cli_interface(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),      // Banner
+            Constraint::Min(0),         // Command history
+            Constraint::Length(3),      // Input area
+        ])
         .split(area);
 
-    let editor = Paragraph::new(app.input.as_str())
-        .block(Block::default().title("CLI Input").borders(Borders::ALL));
-    f.render_widget(editor, layout[0]);
+    // banner
+    render_banner(f, chunks[0]);
 
-    draw_project_tree(f, app, layout[1]);
+    // command history
+    render_command_history(f, chunks[1], app);
+
+    // input area
+    render_input_area(f, chunks[2], app);
 }
 
-fn draw_editor_layout(f: &mut Frame, app: &App, size: Rect) {
-    let vertical = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
-        .split(size);
+fn render_banner(f: &mut Frame, area: Rect) {
+    let banner = Paragraph::new("Team UNFAIR")
+        .block(Block::default().borders(Borders::ALL))
+        .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
+        .alignment(Alignment::Center);
 
-    let banner = Paragraph::new(Line::from(Span::styled(
-        " GUTS - Git in Rust from scratch",
-        Style::default().add_modifier(Modifier::BOLD),
-    )))
-        .block(Block::default().borders(Borders::ALL).title("Banner"));
-
-    f.render_widget(banner, vertical[0]);
-
-    let horizontal = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)].as_ref())
-        .split(vertical[1]);
-
-    draw_editor(f, app, horizontal[0]);
-    draw_project_tree(f, app, horizontal[1]);
+    f.render_widget(banner, area);
 }
 
-fn draw_editor(f: &mut Frame, app: &App, area: Rect) {
-    let lines: Vec<Line> = (0..100)
-        .map(|i| {
-            Line::from(Span::raw(format!(
-                "{:>2} │ {}",
-                i,
-                if i == 0 { &app.input } else { "" }
-            )))
-        })
-        .collect();
+fn render_command_history(f: &mut Frame, area: Rect, app: &App) {
+    let mut items = Vec::new();
 
-    let editor = Paragraph::new(Text::from(lines))
-        .block(Block::default().borders(Borders::ALL).title("CLI - Editor"));
+    // add welcome message if history is empty
+    if app.command_history.is_empty() {
+        items.push(ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("Welcome to GUTS Terminal!", Style::default().fg(Color::LightGreen)),
+            ]),
+            Line::from(vec![
+                Span::styled("Team UNFAIR: Jecko, Max, Kae, Algont", Style::default().fg(Color::LightGreen)),
+            ]),
+            Line::from(vec![
+                Span::styled("Type 'guts' commands or regular shell commands.", Style::default().fg(Color::Gray)),
+            ]),
+            Line::from(vec![
+                Span::styled("Press Ctrl+C to quit.", Style::default().fg(Color::Gray)),
+            ]),
+        ]));
+    }
 
-    f.render_widget(editor, area);
+    // add command history
+    for result in &app.command_history {
+        items.push(ListItem::new(vec![
+            Line::from(vec![
+                Span::styled("$  ", Style::default().fg(Color::Green)),
+                Span::styled(&result.command, Style::default().fg(Color::White)),
+            ]),
+        ]));
+
+        // output
+        if !result.output.is_empty() {
+            for line in result.output.lines() {
+                items.push(ListItem::new(vec![
+                    Line::from(vec![
+                        Span::styled(line, Style::default().fg(Color::LightBlue)),
+                    ]),
+                ]));
+            }
+        }
+
+        // error
+        if let Some(error) = &result.error {
+            for line in error.lines() {
+                items.push(ListItem::new(vec![
+                    Line::from(vec![
+                        Span::styled(line, Style::default().fg(Color::LightRed)),
+                    ]),
+                ]));
+            }
+        }
+
+        // add empty line between commands
+        items.push(ListItem::new(vec![Line::from("")]));
+    }
+
+    let list = List::new(items)
+        .block(Block::default().borders(Borders::ALL))
+        .style(Style::default().fg(Color::White));
+
+    f.render_widget(list, area);
 }
 
-fn draw_project_tree(f: &mut Frame, app: &App, area: Rect) {
-    // Soon....
-    let tree_lines = app
-        .project_tree
-        .iter()
-        .map(|line| Line::from(Span::raw(line.clone())))
-        .collect::<Vec<Line>>();
+fn render_input_area(f: &mut Frame, area: Rect, app: &App) {
+    let current_dir = std::path::Path::new(&app.current_dir)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
 
-    let tree_paragraph = Paragraph::new(Text::from(tree_lines))
-        .block(Block::default().title("Project Tree").borders(Borders::ALL));
+    let prompt = format!("{}$ ", current_dir);
+    let input_text = format!("{}{}", prompt, app.input);
 
-    f.render_widget(tree_paragraph, area);
+    let input = Paragraph::new(input_text)
+        .block(Block::default().borders(Borders::ALL).title("Input"))
+        .style(Style::default().fg(Color::White));
+
+    f.render_widget(input, area);
+
+    // Input => cursor position
+    let cursor_x = area.x + 1 + prompt.len() as u16 + app.cursor_position as u16;
+    let cursor_y = area.y + 1;
+    f.set_cursor(cursor_x, cursor_y);
 }

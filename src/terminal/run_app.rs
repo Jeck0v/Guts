@@ -1,58 +1,61 @@
-use std::io;
+use crate::terminal::{app::App, ui};
+use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{
+    backend::CrosstermBackend,
+    Terminal,
+};
+use std::io;
 
-use super::{app::{App, Tab}, ui::draw};
-
-pub fn run_app() -> io::Result<()> {
+pub fn run_app() -> Result<()> {
+    // setup TUI
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new();
+    // create app and run it
+    let app = App::new();
+    let res = run_app_loop(&mut terminal, app);
 
+    // restore tui
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    if let Err(err) = res {
+        println!("{:?}", err);
+    }
+
+    Ok(())
+}
+
+fn run_app_loop<B: ratatui::backend::Backend>(
+    terminal: &mut Terminal<B>,
+    mut app: App,
+) -> Result<()> {
     loop {
-        terminal.draw(|f| draw(f, &app))?;
+        terminal.draw(|f| ui::render(f, &app))?;
 
-        if event::poll(std::time::Duration::from_millis(200))? {
-            if let Event::Key(key_event) = event::read()? {
-                if key_event.kind == KeyEventKind::Press {
-                    match key_event.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Char(c) => app.on_key(c),
-                        KeyCode::Backspace => app.backspace(),
-                        KeyCode::Right => app.next_tab(),
-                        KeyCode::Left => app.prev_tab(),
-                        KeyCode::Down => {
-                            if matches!(app.tab, Tab::Cli) {
-                                app.select_next();
-                            }
-                        }
-                        KeyCode::Up => {
-                            if matches!(app.tab, Tab::Cli) {
-                                app.select_previous();
-                            }
-                        }
-                        KeyCode::Enter => {
-                            if matches!(app.tab, Tab::Cli) {
-                                // Soon..
-                            }
-                        }
-                        _ => {}
-                    }
-                }
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Press {
+                app.handle_key_event(key)?;
             }
+        }
+
+        if app.should_quit {
+            break;
         }
     }
 
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
-    terminal.show_cursor()?;
     Ok(())
 }
