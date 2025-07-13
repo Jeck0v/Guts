@@ -5,7 +5,6 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Tabs},
     Frame,
 };
-use tui_tree_widget::Tree;
 
 use crate::terminal::app::{App, Tab};
 
@@ -26,7 +25,7 @@ pub fn draw(f: &mut Frame, app: &App) {
 }
 
 fn draw_tabs(f: &mut Frame, app: &App, area: Rect) {
-    let titles = ["CLI", "Editor"]
+    let titles: Vec<_> = ["CLI", "Editor"]
         .iter()
         .map(|t| Line::from(Span::styled(*t, Style::default())))
         .collect();
@@ -52,10 +51,7 @@ fn draw_cli(f: &mut Frame, app: &App, area: Rect) {
         .block(Block::default().title("CLI Input").borders(Borders::ALL));
     f.render_widget(editor, layout[0]);
 
-    let tree = Tree::new(app.project_tree.clone())
-        .expect("Failed to create tree")
-        .block(Block::default().title("Project Tree").borders(Borders::ALL));
-    f.render_widget(tree, layout[1]);
+    draw_project_tree(f, app, layout[1]);
 }
 
 fn draw_editor_layout(f: &mut Frame, app: &App, size: Rect) {
@@ -82,12 +78,12 @@ fn draw_editor_layout(f: &mut Frame, app: &App, size: Rect) {
 }
 
 fn draw_editor(f: &mut Frame, app: &App, area: Rect) {
-    let lines: Vec<Line> = (0..20)
+    let lines: Vec<Line> = (0..100)
         .map(|i| {
             Line::from(Span::raw(format!(
                 "{:>2} │ {}",
                 i,
-                if i == 10 { &app.input } else { "" }
+                if i == 0 { &app.input } else { "" }
             )))
         })
         .collect();
@@ -99,9 +95,15 @@ fn draw_editor(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_project_tree(f: &mut Frame, app: &App, area: Rect) {
-    let tree = Tree::new(app.project_tree.clone())
-        .expect("Failed to create tree")
-        .block(Block::default().borders(Borders::ALL).title("Project Tree"));
+    // Soon....
+    let tree_lines = app
+        .project_tree
+        .iter()
+        .map(|line| Line::from(Span::raw(line.clone())))
+        .collect::<Vec<Line>>();
 
-    f.render_widget(tree, area);
+    let tree_paragraph = Paragraph::new(Text::from(tree_lines))
+        .block(Block::default().title("Project Tree").borders(Borders::ALL));
+
+    f.render_widget(tree_paragraph, area);
 }
