@@ -17,13 +17,15 @@ pub enum Commands {
     /// Hash a file as a Git blob
     HashObject(hash_object::HashObjectArgs),
 
-    /// Read a blob 
+    /// Read a blob
     CatFile(cat_file::CatFileArgs),
 
-    // Write a tree
+    /// Write a tree
     WriteTree(write_tree::WriteTreeArgs),
 
     // Commit a tree
     CommitTree(commit_tree::CommitObject),
 
+    /// Launch graphical terminal UI
+    Tui,
 }

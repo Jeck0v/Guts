@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>guts-wpkg</id>
+    <version>1.0.0</version>
+    <title>Guts - Git in Rust</title>
+    <authors>UNFAIR TEAM</authors>
+    <owners>UNFAIR TEAM</owners>
+    <description>Guts is an educational implementation of Git written in Rust. It provides a better understanding of the inner workings of Git, while remaining lightweight, fast and easy to use.</description>
+    <summary>Git from scratch in Rust — educational and efficient.</summary>
+    <projectUrl>https://github.com/Jeck0v/Guts</projectUrl>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>git rust cli vcs open-source unfair guts</tags>
+    <releaseNotes>https://github.com/Jeck0v/Guts/releases</releaseNotes>
+    <dependencies>
+      <dependency id="chocolatey" version="[2.3.0]" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
