@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap, Scrollbar, ScrollbarOrientation, ScrollbarState},
     Frame,
 };
 
@@ -12,10 +12,8 @@ pub fn render(f: &mut Frame, app: &mut App) {
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
         .split(f.size());
-
     // left panel - ASCII Art
     render_ascii_art(f, chunks[0]);
-
     // right panel - CLI Interface
     render_cli_interface(f, chunks[1], app);
 }
@@ -66,9 +64,9 @@ fn render_cli_interface(f: &mut Frame, area: Rect, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),      // Banner
-            Constraint::Min(0),         // Command history
-            Constraint::Length(3),      // Input area
+            Constraint::Length(3),  // Banner
+            Constraint::Min(0),     // Command history
+            Constraint::Length(3),  // Input area
         ])
         .split(area);
 
@@ -76,10 +74,8 @@ fn render_cli_interface(f: &mut Frame, area: Rect, app: &mut App) {
 
     // banner
     render_banner(f, chunks[0]);
-
-    // command history avec scrollbar
+    // command hystory
     render_command_history_with_scroll(f, chunks[1], app);
-
     // input area
     render_input_area(f, chunks[2], app);
 }
@@ -123,7 +119,7 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
             ]),
         ]));
 
-        // output
+        // output gestion
         if !result.output.is_empty() {
             for line in result.output.lines() {
                 items.push(ListItem::new(vec![
@@ -134,7 +130,7 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
             }
         }
 
-        // error
+        // error catch
         if let Some(error) = &result.error {
             for line in error.lines() {
                 items.push(ListItem::new(vec![
@@ -156,16 +152,17 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
         "History".to_string()
     };
 
-    let list = List::new(items)
+    let visible_items: Vec<ListItem> = items
+        .into_iter()
+        .skip(app.scroll_offset)
+        .take(app.max_visible_lines)
+        .collect();
+
+    let list = List::new(visible_items)
         .block(Block::default().borders(Borders::ALL).title(title))
         .style(Style::default().fg(Color::White));
 
-    //  ListState for scroll
-    let mut list_state = ListState::default();
-    list_state.select(Some(app.scroll_offset));
-
-    // Render list with scroll
-    f.render_stateful_widget(list, area, &mut list_state);
+    f.render_widget(list, area);
 
     if total_lines > app.max_visible_lines {
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)

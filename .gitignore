@@ -3,7 +3,7 @@
 **/*.rs.bk
 
 # === Cargo specific ===
-
+Cargo.lock
 /.cargo/
 
 # === IDEs and editors ===

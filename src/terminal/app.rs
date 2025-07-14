@@ -21,8 +21,8 @@ pub struct App {
     pub input_history_index: usize,
     pub should_quit: bool,
     pub current_dir: String,
-    pub scroll_offset: usize,  // scroll position in history
-    pub max_visible_lines: usize,  // max number of lines visible
+    pub scroll_offset: usize, // scroll position in history
+    pub max_visible_lines: usize, // max number of lines visible
 }
 
 impl Default for App {
@@ -40,7 +40,7 @@ impl Default for App {
                 .to_string_lossy()
                 .to_string(),
             scroll_offset: 0,
-            max_visible_lines: 10,  // default value
+            max_visible_lines: 10, // default value
         }
     }
 }
@@ -50,10 +50,10 @@ impl App {
         Self::default()
     }
 // ======================= Line & Scroll =======================
-    // calc line hysto
+// calc line hysto
     pub fn total_history_lines(&self) -> usize {
         if self.command_history.is_empty() {
-            return 4;
+            return 4;  // welcome line
         }
 
         let mut total = 0;
@@ -201,7 +201,7 @@ impl App {
                 self.command_history.clear();
                 self.input.clear();
                 self.cursor_position = 0;
-                self.scroll_offset = 0;  // reset scroll position
+                self.scroll_offset = 0; // reset scroll position
                 return Ok(());
             }
             "pwd" => {
@@ -267,11 +267,9 @@ impl App {
         self.cursor_position = 0;
 
         self.scroll_to_bottom(); // Auto-scroll after new command
-
         Ok(())
     }
-// ======================= ONLY GUTS COMMANDS =======================
-// Handles `guts` subcommands
+// ======================= Handles only guts subcommands =======================
     fn execute_guts_command(&mut self, command: &str) -> Result<CommandResult> {
         let args: Vec<&str> = command.split_whitespace().collect();
 
@@ -280,9 +278,9 @@ impl App {
                 match cli.command {
                     Commands::Init(init_args) => {
                         match guts::commands::init::run(&init_args) {
-                            Ok(_) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
-                                output: "Repository initialized successfully".to_string(),
+                                output: out,
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {
@@ -294,9 +292,9 @@ impl App {
                     }
                     Commands::HashObject(hash_args) => {
                         match guts::commands::hash_object::run(&hash_args) {
-                            Ok(_) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
-                                output: "Object hashed successfully".to_string(),
+                                output: out,
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {
@@ -308,9 +306,9 @@ impl App {
                     }
                     Commands::CatFile(cat_args) => {
                         match guts::commands::cat_file::run(&cat_args) {
-                            Ok(_) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
-                                output: "File content displayed".to_string(),
+                                output: out,
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {
@@ -322,9 +320,9 @@ impl App {
                     }
                     Commands::WriteTree(tree_args) => {
                         match guts::commands::write_tree::run(&tree_args) {
-                            Ok(_) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
-                                output: "Tree written successfully".to_string(),
+                                output: out,
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {
@@ -336,9 +334,9 @@ impl App {
                     }
                     Commands::CommitTree(commit_args) => {
                         match guts::commands::commit_tree::run(&commit_args) {
-                            Ok(_) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
-                                output: "Commit created successfully".to_string(),
+                                output: out,
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {
