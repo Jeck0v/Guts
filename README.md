@@ -2,6 +2,9 @@
 
 This project involves reimplementing core Git functionality in Rust. It will help you understand Git's internal architecture and make you comfortable with both its plumbing and porcelain commands.
 
+##### Sub-repo:
+[Homebrew Tap](https://github.com/Oomaxime/homebrew-guts)
+
 ## 🎯 Project Scope
 
 You will implement a subset of Git commands, both low-level (plumbing) and user-facing (porcelain). Your goal is to ensure they behave similarly to real Git, within clearly defined constraints.
