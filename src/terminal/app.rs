@@ -1,5 +1,6 @@
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::fs;
 use std::process::{Command, Stdio};
 use clap::Parser;
 use guts::cli::{Cli, Commands};
@@ -136,16 +137,55 @@ impl App {
                     error: None,
                 }
             }
-            //  /!\ Need to Fix ls and cd /!\
-            _ => {
-                // handle guts commands
-                if command.starts_with("guts ") {
-                    self.execute_guts_command(&command)?
+            cmd if cmd.starts_with("cd") => {
+                let parts: Vec<&str> = cmd.split_whitespace().collect();
+                let target_dir = if parts.len() > 1 {
+                    std::path::PathBuf::from(&self.current_dir).join(parts[1])
                 } else {
-                    // handle system commands
-                    self.execute_system_command(&command)?
+                    std::env::var("HOME").unwrap_or_else(|_| self.current_dir.clone()).into()
+                };
+
+                match target_dir.canonicalize() {
+                    Ok(path) => {
+                        self.current_dir = path.to_string_lossy().to_string();
+                        CommandResult {
+                            command: command.clone(),
+                            output: format!("Changed directory to {}", self.current_dir),
+                            error: None,
+                        }
+                    }
+                    Err(e) => CommandResult {
+                        command: command.clone(),
+                        output: String::new(),
+                        error: Some(format!("cd error: {}", e)),
+                    },
                 }
             }
+            "ls" => {
+                match fs::read_dir(&self.current_dir) {
+                    Ok(entries) => {
+                        let mut lines = vec![];
+                        for entry in entries.flatten() {
+                            if let Ok(name) = entry.file_name().into_string() {
+                                lines.push(name);
+                            }
+                        }
+                        lines.sort();
+                        CommandResult {
+                            command: command.clone(),
+                            output: lines.join("\n"),
+                            error: None,
+                        }
+                    }
+                    Err(e) => CommandResult {
+                        command: command.clone(),
+                        output: String::new(),
+                        error: Some(format!("ls error: {}", e)),
+                    },
+                }
+            }
+            cmd if cmd.starts_with("guts ") => self.execute_guts_command(&command)?,
+            _ => self.execute_system_command(&command)?,
         };
 
         self.command_history.push(result);
@@ -155,10 +195,8 @@ impl App {
     }
 
     fn execute_guts_command(&mut self, command: &str) -> Result<CommandResult> {
-        // parsing the command using clap
         let args: Vec<&str> = command.split_whitespace().collect();
 
-        // try to parse the command with clap
         match Cli::try_parse_from(args) {
             Ok(cli) => {
                 match cli.command {
@@ -218,24 +256,18 @@ impl App {
                             }),
                         }
                     }
-                    Commands::Tui => {
-                        // this shouldn't happen in the TUI
-                        Ok(CommandResult {
-                            command: command.to_string(),
-                            output: String::new(),
-                            error: Some("Cannot launch TUI".to_string()),
-                        })
-                    }
+                    Commands::Tui => Ok(CommandResult {
+                        command: command.to_string(),
+                        output: String::new(),
+                        error: Some("Cannot launch TUI".to_string()),
+                    }),
                 }
             }
-            Err(e) => {
-                // if clap parsing fails, show the error
-                Ok(CommandResult {
-                    command: command.to_string(),
-                    output: String::new(),
-                    error: Some(e.to_string()),
-                })
-            }
+            Err(e) => Ok(CommandResult {
+                command: command.to_string(),
+                output: String::new(),
+                error: Some(e.to_string()),
+            }),
         }
     }
 
@@ -260,21 +292,6 @@ impl App {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-                // /!\ Need to Fix it /!\ (Soon, i am cooking)
-                // handle cd command specially
-                if parts[0] == "cd" && output.status.success() {
-                    if parts.len() > 1 {
-                        let new_dir = std::path::PathBuf::from(&self.current_dir).join(parts[1]);
-                        if let Ok(canonical) = new_dir.canonicalize() {
-                            self.current_dir = canonical.to_string_lossy().to_string();
-                        }
-                    } else {
-                        if let Ok(home) = std::env::var("HOME") {
-                            self.current_dir = home;
-                        }
-                    }
-                }
 
                 Ok(CommandResult {
                     command: command.to_string(),
