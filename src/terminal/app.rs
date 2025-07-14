@@ -23,6 +23,9 @@ pub struct App {
     pub current_dir: String,
     pub scroll_offset: usize, // scroll position in history
     pub max_visible_lines: usize, // max number of lines visible
+    pub autocomplete_list: Vec<String>,     // auto complete
+    pub show_autocomplete: bool,
+    pub autocomplete_index: usize,
 }
 
 impl Default for App {
@@ -41,6 +44,9 @@ impl Default for App {
                 .to_string(),
             scroll_offset: 0,
             max_visible_lines: 10, // default value
+            autocomplete_list: Vec::new(),
+            show_autocomplete: false,
+            autocomplete_index: 0,
         }
     }
 }
@@ -53,7 +59,7 @@ impl App {
 // calc line hysto
     pub fn total_history_lines(&self) -> usize {
         if self.command_history.is_empty() {
-            return 4;  // welcome line
+            return 4;
         }
 
         let mut total = 0;
@@ -98,6 +104,74 @@ impl App {
     pub fn update_visible_lines(&mut self, height: usize) {
         self.max_visible_lines = if height > 8 { height - 6 } else { 2 };
     }
+
+// ================= Auto complete: helpers =================
+    fn update_autocomplete(&mut self) {
+        use std::collections::HashSet;
+
+        self.autocomplete_list.clear();
+        self.show_autocomplete = false;
+
+        if self.input.is_empty() {
+            return;
+        }
+
+        let mut suggestions = HashSet::new();
+
+        for history in &self.input_history {
+            if history.starts_with(&self.input) {
+                suggestions.insert(history.clone());
+            }
+        }
+
+        // basic command
+        let basic_cmds = vec![
+        "cd", "ls", "pwd", "clear", "exit", "quit", "guts", "guts init", "guts hash-object", "guts cat-file", "guts write-tree", "guts commit-tree"
+        ];
+        for cmd in basic_cmds {
+            if cmd.starts_with(&self.input) {
+                suggestions.insert(cmd.to_string());
+            }
+        }
+
+        let mut sorted: Vec<String> = suggestions.into_iter().collect();
+        sorted.sort();
+
+        if !sorted.is_empty() {
+            self.autocomplete_list = sorted;
+            self.show_autocomplete = true;
+            self.autocomplete_index = 0;
+        }
+    }
+
+    fn apply_autocomplete(&mut self) {
+        if self.show_autocomplete && !self.autocomplete_list.is_empty() {
+            if let Some(suggestion) = self.autocomplete_list.get(self.autocomplete_index) {
+                self.input = suggestion.clone();
+                self.cursor_position = self.input.len();
+                self.show_autocomplete = false;
+            }
+        }
+    }
+
+    fn next_autocomplete(&mut self) {
+        if !self.autocomplete_list.is_empty() {
+            self.autocomplete_index =
+                (self.autocomplete_index + 1) % self.autocomplete_list.len();
+        }
+    }
+
+    fn previous_autocomplete(&mut self) {
+        if !self.autocomplete_list.is_empty() {
+            if self.autocomplete_index == 0 {
+                self.autocomplete_index = self.autocomplete_list.len() - 1;
+            } else {
+                self.autocomplete_index -= 1;
+            }
+        }
+    }
+
+
 // ======================= EVENT KEY =======================
     pub fn handle_key_event(&mut self, key: KeyEvent) -> Result<()> {
         match key.code {
@@ -178,6 +252,12 @@ impl App {
             KeyCode::Char(c) => {
                 self.input.insert(self.cursor_position, c);
                 self.cursor_position += 1;
+                self.update_autocomplete();
+            }
+            KeyCode::Tab => {
+                if self.show_autocomplete {
+                    self.apply_autocomplete();
+                }
             }
             _ => {}
         }
