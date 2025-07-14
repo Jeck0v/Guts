@@ -3,7 +3,7 @@
 **/*.rs.bk
 
 # === Cargo specific ===
-/Cargo.lock
+
 /.cargo/
 
 # === IDEs and editors ===
@@ -38,10 +38,11 @@ Thumbs.db
 
 # === Optional ===
 .env
+.cursorrules
+CLAUDE.md
 
 # === Project ===
 .guts/
-
 
 # === Not currently working ====
 flake.md
