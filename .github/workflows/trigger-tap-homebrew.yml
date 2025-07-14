@@ -1,0 +1,24 @@
+name: Trigger Homebrew Update
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-homebrew:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger homebrew tap update
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.HOMEBREW_UPDATE_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/Oomaxime/homebrew-guts/dispatches \
+            -d "{\"event_type\":\"new-release\",\"client_payload\":{\"version\":\"${{ github.event.release.tag_name }}\",\"release_url\":\"${{ github.event.release.html_url }}\"}}"
+
+      - name: Verify dispatch sent
+        run: |
+          echo "✅ Homebrew tap update triggered for version ${{ github.event.release.tag_name }}"
+          echo "🔗 Release URL: ${{ github.event.release.html_url }}"
