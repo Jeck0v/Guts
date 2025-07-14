@@ -53,7 +53,7 @@ impl App {
     // calc line hysto
     pub fn total_history_lines(&self) -> usize {
         if self.command_history.is_empty() {
-            return 4; // Lignes de bienvenue
+            return 4;
         }
 
         let mut total = 0;

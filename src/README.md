@@ -14,6 +14,11 @@ gust/
 │   │   ├── init.rs
 │   │   ├── hash_object.rs
 │   │   └── ...
+│   ├── terminal/                   # TUI Ratatui 
+│   │   ├── mod.rs
+│   │   ├── app.rs
+│   │   ├── run_app.rs
+│   │   └── ui.rs             
 │   └── cli.rs                      # CLI argument parsing using `clap`                  
 ├── tests/                          # Integration tests
 │   ├── test_init.rs
@@ -43,6 +48,11 @@ Each file corresponds to a command: init, add, commit...
 Contains generic, reusable logic: create Git objects, calculate hashes, manage indexes...<br>
 **Never talk to the terminal! Just business functions**
 > 🧠 It's like the machine's internal engine
+
+### The terminal folder
+It contains everything about **the TUI - Ratatui** <br>
+This is where you call up and configure the commands you created earlier.
+> 🧠 This is the graphical part of the project
 ---
 ### Summary
 >`main.rs` is the controller, `cli.rs` analyzes user commands, `commands/` executes actions, and `core/` contains the real technical building blocks. <br>
