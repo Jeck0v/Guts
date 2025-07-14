@@ -40,6 +40,7 @@ fn render_ascii_art(f: &mut Frame, area: Rect) {
     • guts init
     • guts hash-object
     • guts cat-file
+    • guts commit-tree
     • guts write-tree
     • ls, pwd, cd
     • clear, exit
