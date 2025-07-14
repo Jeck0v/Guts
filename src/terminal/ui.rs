@@ -169,7 +169,9 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"))
             .track_symbol(Some("║"))
-            .thumb_symbol("█");
+            .thumb_symbol("█")
+            .thumb_style(Style::default().fg(Color::White)) // cursor color
+            .track_style(Style::default().fg(Color::DarkGray));
 
         let mut scrollbar_state = ScrollbarState::new(total_lines)
             .position(app.scroll_offset);
