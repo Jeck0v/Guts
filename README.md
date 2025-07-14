@@ -12,6 +12,15 @@ https://github.com/Jeck0v/Guts/wiki/Installation-with-package-manager
 
 You will implement a subset of Git commands, both low-level (plumbing) and user-facing (porcelain). Your goal is to ensure they behave similarly to real Git, within clearly defined constraints.
 
+## How to use the TUI app:
+You need to:
+``` bash
+cargo build
+```
+and then:
+``` bash
+cargo run -- tui
+```
 ---
 
 ## 🛠 Plumbing Commands
