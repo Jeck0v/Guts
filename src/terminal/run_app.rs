@@ -20,8 +20,8 @@ pub fn run_app() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new();
-    let res = run_app_loop(&mut terminal, app);
+    let mut app = App::new();
+    let res = run_app_loop(&mut terminal, &mut app);
 
     // restore tui
     disable_raw_mode()?;
@@ -41,10 +41,10 @@ pub fn run_app() -> Result<()> {
 
 fn run_app_loop<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
-    mut app: App,
+    app: &mut App,
 ) -> Result<()> {
     loop {
-        terminal.draw(|f| ui::render(f, &app))?;
+        terminal.draw(|f| ui::render(f, app))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {

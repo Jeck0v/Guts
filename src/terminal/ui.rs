@@ -3,11 +3,11 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState},
     Frame,
 };
 
-pub fn render(f: &mut Frame, app: &App) {
+pub fn render(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
@@ -38,15 +38,12 @@ fn render_ascii_art(f: &mut Frame, area: Rect) {
 
     Available Commands:
     • guts init
-    • guts hash-object
-    • guts cat-file
-    • guts commit-tree
-    • guts write-tree
     • ls, pwd, cd
     • clear, exit
 
     Navigation:
     • ↑/↓ - Command history
+    • Ctrl+↑/↓ - Scroll output
     • Ctrl+C - Quit
     • Enter - Execute command
 
@@ -65,7 +62,7 @@ fn render_ascii_art(f: &mut Frame, area: Rect) {
     f.render_widget(paragraph, area);
 }
 
-fn render_cli_interface(f: &mut Frame, area: Rect, app: &App) {
+fn render_cli_interface(f: &mut Frame, area: Rect, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -75,11 +72,13 @@ fn render_cli_interface(f: &mut Frame, area: Rect, app: &App) {
         ])
         .split(area);
 
+    app.update_visible_lines(chunks[1].height as usize);
+
     // banner
     render_banner(f, chunks[0]);
 
-    // command history
-    render_command_history(f, chunks[1], app);
+    // command history avec scrollbar
+    render_command_history_with_scroll(f, chunks[1], app);
 
     // input area
     render_input_area(f, chunks[2], app);
@@ -94,7 +93,7 @@ fn render_banner(f: &mut Frame, area: Rect) {
     f.render_widget(banner, area);
 }
 
-fn render_command_history(f: &mut Frame, area: Rect, app: &App) {
+fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
     let mut items = Vec::new();
 
     // add welcome message if history is empty
@@ -110,7 +109,7 @@ fn render_command_history(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("Type 'guts' commands or regular shell commands.", Style::default().fg(Color::Gray)),
             ]),
             Line::from(vec![
-                Span::styled("Press Ctrl+C to quit.", Style::default().fg(Color::Gray)),
+                Span::styled("Press Ctrl+C to quit. Use Ctrl+↑/↓ to scroll.", Style::default().fg(Color::Gray)),
             ]),
         ]));
     }
@@ -119,7 +118,7 @@ fn render_command_history(f: &mut Frame, area: Rect, app: &App) {
     for result in &app.command_history {
         items.push(ListItem::new(vec![
             Line::from(vec![
-                Span::styled("$  ", Style::default().fg(Color::Green)),
+                Span::styled("$ ", Style::default().fg(Color::Green)),
                 Span::styled(&result.command, Style::default().fg(Color::White)),
             ]),
         ]));
@@ -150,11 +149,43 @@ fn render_command_history(f: &mut Frame, area: Rect, app: &App) {
         items.push(ListItem::new(vec![Line::from("")]));
     }
 
+    let total_lines = app.total_history_lines();
+    let title = if total_lines > app.max_visible_lines {
+        format!("History ({}↑↓{})", app.scroll_offset + 1, total_lines)
+    } else {
+        "History".to_string()
+    };
+
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL))
+        .block(Block::default().borders(Borders::ALL).title(title))
         .style(Style::default().fg(Color::White));
 
-    f.render_widget(list, area);
+    //  ListState for scroll
+    let mut list_state = ListState::default();
+    list_state.select(Some(app.scroll_offset));
+
+    // Render list with scroll
+    f.render_stateful_widget(list, area, &mut list_state);
+
+    if total_lines > app.max_visible_lines {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"))
+            .track_symbol(Some("║"))
+            .thumb_symbol("█");
+
+        let mut scrollbar_state = ScrollbarState::new(total_lines)
+            .position(app.scroll_offset);
+
+        f.render_stateful_widget(
+            scrollbar,
+            area.inner(&ratatui::layout::Margin {
+                vertical: 1,
+                horizontal: 0,
+            }),
+            &mut scrollbar_state,
+        );
+    }
 }
 
 fn render_input_area(f: &mut Frame, area: Rect, app: &App) {
@@ -172,7 +203,7 @@ fn render_input_area(f: &mut Frame, area: Rect, app: &App) {
 
     f.render_widget(input, area);
 
-    // Input => cursor position
+    // Input cursor position
     let cursor_x = area.x + 1 + prompt.len() as u16 + app.cursor_position as u16;
     let cursor_y = area.y + 1;
     f.set_cursor(cursor_x, cursor_y);
