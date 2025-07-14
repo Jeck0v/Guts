@@ -5,6 +5,9 @@ This project involves reimplementing core Git functionality in Rust. It will hel
 ##### Sub-repo:
 [Homebrew Tap](https://github.com/Oomaxime/homebrew-guts)
 
+#### Instalation:
+https://github.com/Jeck0v/Guts/wiki/Installation-with-package-manager
+
 ## 🎯 Project Scope
 
 You will implement a subset of Git commands, both low-level (plumbing) and user-facing (porcelain). Your goal is to ensure they behave similarly to real Git, within clearly defined constraints.
@@ -127,5 +130,3 @@ You will implement a subset of Git commands, both low-level (plumbing) and user-
 - Use AI if needed, but understand what you're coding.
 
 ---
-
-Good luck, and enjoy re-inventing Git!
