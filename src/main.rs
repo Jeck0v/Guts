@@ -1,19 +1,35 @@
+mod terminal;
+
 use anyhow::Result;
 use clap::Parser;
-
 use guts::cli::{Cli, Commands};
 
-/// Entry point of the Guts CLI application
-/// Parses the command-line arguments and dispatches to the corresponding command
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // refactored for TUI output
     match cli.command {
-        Commands::Init(args) => guts::commands::init::run(&args)?,
-        Commands::HashObject(args) => guts::commands::hash_object::run(&args)?,
-        Commands::CatFile(args) => guts::commands::cat_file::run(&args)?,
-        Commands::WriteTree(args) => guts::commands::write_tree::run(&args)?,
-        Commands::CommitTree(args) => guts::commands::commit_tree::run(&args)?,
+        Commands::Init(args) => {
+            let output = guts::commands::init::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::HashObject(args) => {
+            let output = guts::commands::hash_object::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::CatFile(args) => {
+            let output = guts::commands::cat_file::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::WriteTree(args) => {
+            let output = guts::commands::write_tree::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::CommitTree(args) => {
+            let output = guts::commands::commit_tree::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::Tui => terminal::run_app()?,
     }
 
     Ok(())

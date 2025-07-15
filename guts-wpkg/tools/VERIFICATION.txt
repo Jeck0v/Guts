@@ -1,0 +1,11 @@
+The binary `guts.exe` was built from the source code at:
+
+https://github.com/Jeck0v/Guts/release/tag/v1.0.0
+
+To verify:
+1. Download the binary from the above release URL
+2. Compare the SHA256 checksum:
+
+$certutil -hashfile guts.exe SHA256
+
+Expected: 4ECEAC2A8DA5D7B1B18B4A25A0027D94B39C47CE0947A46386E3E0A57490223F
