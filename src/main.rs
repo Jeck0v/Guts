@@ -5,6 +5,14 @@ use clap::Parser;
 use guts::cli::{Cli, Commands};
 
 fn main() -> Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() == 1 {
+        // No arguments → launch TUI
+        terminal::run_app()?;
+        return Ok(());
+    }
+
     let cli = Cli::parse();
 
     // refactored for TUI output
