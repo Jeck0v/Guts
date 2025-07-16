@@ -154,24 +154,6 @@ impl App {
         }
     }
 
-    fn next_autocomplete(&mut self) {
-        if !self.autocomplete_list.is_empty() {
-            self.autocomplete_index =
-                (self.autocomplete_index + 1) % self.autocomplete_list.len();
-        }
-    }
-
-    fn previous_autocomplete(&mut self) {
-        if !self.autocomplete_list.is_empty() {
-            if self.autocomplete_index == 0 {
-                self.autocomplete_index = self.autocomplete_list.len() - 1;
-            } else {
-                self.autocomplete_index -= 1;
-            }
-        }
-    }
-
-
 // ======================= EVENT KEY =======================
     pub fn handle_key_event(&mut self, key: KeyEvent) -> Result<()> {
         match key.code {
