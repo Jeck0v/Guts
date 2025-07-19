@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree, status};
+use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree, status, add};
 
 #[derive(Parser)]
 #[command(name = "guts", version, author, about = "A Git implementation in Rust like Guts")]
@@ -28,6 +28,9 @@ pub enum Commands {
 
     // Get the status of the current repo
     Status(status::StatusObject),
+
+    /// Add files to the staging area
+    Add(add::AddArgs),
 
     /// Launch graphical terminal UI
     Tui,
