@@ -38,7 +38,6 @@ fn main() -> Result<()> {
             let output = guts::commands::commit_tree::run(&args)?;
             println!("{}", output);
         }
-        Commands::Tui => terminal::run_app()?,
         Commands::Status(args) => {
             let output = guts::commands::status::run(&args)?;
             println!("{}", output);
@@ -47,6 +46,7 @@ fn main() -> Result<()> {
             let output = guts::commands::add::run(&args)?;
             println!("{}", output);
         }
+        Commands::Tui => terminal::run_app()?,
     }
 
     Ok(())
