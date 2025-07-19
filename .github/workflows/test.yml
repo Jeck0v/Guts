@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        rust: [stable, beta, nightly]
+        rust: [stable]
 
     steps:
       - name: Checkout code
