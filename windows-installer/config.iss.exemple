@@ -1,0 +1,2 @@
+#define MyAppExe "ref-to-your-folder\target\release\guts.exe"
+#define MyAppIcon "ref-to-your-folder\.ico"
