@@ -53,3 +53,7 @@ flake.nix
 guts-wpkg/*.nupkg
 # Rust binary, only used for local pack
 guts-wpkg/tools/guts.exe
+#IA
+CLAUSE.md
+
+#CLAUSE.md
