@@ -1,43 +1,51 @@
+use crate::core::simple_index;
+use anyhow::Result;
+use clap::Args;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use anyhow::{Result};
-use clap::Args;
 use walkdir::WalkDir;
-use crate::core::simple_index;
 
 /// CLI arguments for the `status` command.
 #[derive(Args)]
 pub struct StatusObject {
-    // Optionnel: chemin custom vers .git (par défaut current/.git)
+    /// Optional: custom path to .git (default current/.git)
     pub guts_dir: Option<PathBuf>,
+    /// Current directory for the operation (injected by TUI)
+    pub dir: Option<PathBuf>,
 }
 
-/// Point d'entrée pour la commande `guts status`
-/// Version adaptée pour l'index JSON simple
+/// Entry point for the `guts status` command
+/// Version adapted for simple JSON index
 pub fn run(args: &StatusObject) -> Result<String> {
-    // Vérifier qu'on est dans un repo git
+    // Determine current directory to use
+    let current_dir = args
+        .dir
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
+
+    // Check if we're in a git repository
     if !simple_index::is_git_repository()? {
         return Ok("fatal: not a git repository".to_string());
     }
 
-    // Charger notre index JSON simple
+    // Load our simple JSON index
     let index = simple_index::SimpleIndex::load()?;
 
-    // Lister tous les fichiers dans le working directory (excluant .git)
-    let work_files = list_working_dir_files()?;
+    // List all files in the working directory (excluding .git)
+    let work_files = list_working_dir_files(&current_dir)?;
 
     let mut output = String::new();
     output.push_str("On branch main\n");
     output.push_str("Your branch is up to date with 'origin/main'.\n");
     output.push_str("\n");
 
-    // Créer un set des fichiers du working directory pour recherche rapide
+    // Create a set of working directory files for fast lookup
     let work_files_set: HashSet<_> = work_files.iter().collect();
 
-    // Fichiers stagés (dans l'index)
+    // Staged files (in the index)
     let staged_files: Vec<&String> = index.get_staged_files();
-    
-    // 1. Fichiers stagés pour commit
+
+    // 1. Files staged for commit
     if !staged_files.is_empty() {
         output.push_str("Changes to be committed:\n");
         output.push_str("  (use \"git reset HEAD <file>...\" to unstage)\n");
@@ -47,10 +55,10 @@ pub fn run(args: &StatusObject) -> Result<String> {
         output.push_str("\n");
     }
 
-    // 2. Fichiers non trackés (présents dans working dir mais pas dans index)
+    // 2. Untracked files (present in working dir but not in index)
     let mut untracked_files = Vec::new();
     for work_file in &work_files {
-        let relative_path = get_relative_path(work_file)?;
+        let relative_path = get_relative_path(work_file, &current_dir)?;
         if !index.contains_file(&relative_path) {
             untracked_files.push(relative_path);
         }
@@ -65,15 +73,15 @@ pub fn run(args: &StatusObject) -> Result<String> {
         output.push_str("\n");
     }
 
-    // 3. Fichiers supprimés (dans l'index mais pas dans working dir)
+    // 3. Deleted files (in index but not in working dir)
     for staged_file in &staged_files {
-        let full_path = std::env::current_dir()?.join(staged_file);
+        let full_path = current_dir.join(staged_file);
         if !work_files_set.contains(&full_path) {
             output.push_str(&format!("        deleted:    {}\n", staged_file));
         }
     }
 
-    // Message final si tout est propre
+    // Final message if everything is clean
     if staged_files.is_empty() && untracked_files.is_empty() {
         output.push_str("nothing to commit, working tree clean\n");
     }
@@ -81,20 +89,17 @@ pub fn run(args: &StatusObject) -> Result<String> {
     Ok(output)
 }
 
-/// Liste récursivement tous les fichiers du working directory, en excluant .git
-fn list_working_dir_files() -> Result<Vec<PathBuf>> {
+/// Recursively list all files in the working directory, excluding .git
+fn list_working_dir_files(current_dir: &PathBuf) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
-    let current_dir = std::env::current_dir()?;
 
-    let walker = WalkDir::new(&current_dir)
-        .into_iter()
-        .filter_entry(|e| {
-            // Exclure le dossier .git
-            !e.path().components().any(|c| {
-                let s = c.as_os_str().to_string_lossy();
-                s == ".git"
-            })
-        });
+    let walker = WalkDir::new(current_dir).into_iter().filter_entry(|e| {
+        // Exclude .git directory
+        !e.path().components().any(|c| {
+            let s = c.as_os_str().to_string_lossy();
+            s == ".git"
+        })
+    });
 
     for entry in walker {
         let entry = entry?;
@@ -106,10 +111,10 @@ fn list_working_dir_files() -> Result<Vec<PathBuf>> {
     Ok(files)
 }
 
-/// Convertit un chemin absolu en chemin relatif depuis la racine du repo
-fn get_relative_path(file_path: &PathBuf) -> Result<String> {
-    let current_dir = std::env::current_dir()?;
-    let relative = file_path.strip_prefix(&current_dir)
-        .map_err(|_| anyhow::anyhow!("le fichier n'est pas dans le répertoire courant"))?;
+/// Convert an absolute path to a relative path from the repo root
+fn get_relative_path(file_path: &PathBuf, current_dir: &PathBuf) -> Result<String> {
+    let relative = file_path
+        .strip_prefix(current_dir)
+        .map_err(|_| anyhow::anyhow!("file is not in the current directory"))?;
     Ok(relative.to_string_lossy().to_string())
 }

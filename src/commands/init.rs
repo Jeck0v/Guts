@@ -15,12 +15,12 @@ pub fn run(args: &InitArgs) -> Result<String> {
         .clone()
         .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
 
-    let guts_dir = dir.join(".guts");
+    let git_dir = dir.join(".git");
 
-    if guts_dir.exists() {
-        return Err(anyhow!(".guts directory already exists in {:?}", dir));
+    if git_dir.exists() {
+        return Err(anyhow!(".git directory already exists in {:?}", dir));
     }
 
     repo::init(&dir).with_context(|| format!("failed to initialize repository in {:?}", dir))?;
-    Ok(format!("Initialized empty Guts repository in {:?}", guts_dir))
+    Ok(format!("Initialized empty Guts repository in {:?}", git_dir))
 }
