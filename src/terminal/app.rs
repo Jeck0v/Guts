@@ -408,6 +408,34 @@ impl App {
                             }),
                         }
                     }
+                    Commands::Status(status_args) => {
+                        match guts::commands::status::run(&status_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                    Commands::Add(add_args) => {
+                        match guts::commands::add::run(&add_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),

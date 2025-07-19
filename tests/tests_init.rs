@@ -12,14 +12,14 @@ fn test_init_creates_repository_structure() {
 
     repo::init(path).unwrap();
 
-    let guts_dir = path.join(".guts");
+    let git_dir = path.join(".git");
 
-    assert!(guts_dir.exists());
-    assert!(guts_dir.join("objects").is_dir());
-    assert!(guts_dir.join("refs/heads").is_dir());
+    assert!(git_dir.exists());
+    assert!(git_dir.join("objects").is_dir());
+    assert!(git_dir.join("refs/heads").is_dir());
     assert_eq!(
-        fs::read_to_string(guts_dir.join("HEAD")).unwrap(),
+        fs::read_to_string(git_dir.join("HEAD")).unwrap(),
         "ref: refs/heads/master\n"
     );
-    assert!(guts_dir.join("config").exists());
+    assert!(git_dir.join("config").exists());
 }

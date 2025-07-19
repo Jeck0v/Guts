@@ -3,15 +3,15 @@ use std::path::{Path};
 
 use anyhow::{Context, Result};
 
-/// Initialise a `.guts` Repository in the given Directory
+/// Initialise a `.git` Repository in the given Directory
 /// Create:
-/// - .guts/
-/// - .guts/objects/
-/// - .guts/refs/heads/
-/// - .guts/HEAD
-/// - .guts/config
+/// - .git/
+/// - .git/objects/
+/// - .git/refs/heads/
+/// - .git/HEAD
+/// - .git/config
 pub fn init(path: &Path) -> Result<()> {
-    let guts_dir = path.join(".guts");
+    let guts_dir = path.join(".git");
     let objects_dir = guts_dir.join("objects");
     let refs_heads_dir = guts_dir.join("refs").join("heads");
     let head_file = guts_dir.join("HEAD");

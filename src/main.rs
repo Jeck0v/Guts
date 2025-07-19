@@ -31,7 +31,14 @@ fn main() -> Result<()> {
             println!("{}", output);
         }
         Commands::Tui => terminal::run_app()?,
-      Commands::Status(args) => guts::commands::status::run(&args)?,
+        Commands::Status(args) => {
+            let output = guts::commands::status::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::Add(args) => {
+            let output = guts::commands::add::run(&args)?;
+            println!("{}", output);
+        }
     }
 
     Ok(())
