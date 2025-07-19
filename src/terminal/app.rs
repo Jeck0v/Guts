@@ -356,7 +356,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::HashObject(hash_args) => {
+                    Commands::HashObject(mut hash_args) => {
+                        // Inject current TUI directory
+                        hash_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::hash_object::run(&hash_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -386,7 +388,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::WriteTree(tree_args) => {
+                    Commands::WriteTree(mut tree_args) => {
+                        // Inject current TUI directory
+                        tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::write_tree::run(&tree_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),

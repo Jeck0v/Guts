@@ -7,6 +7,8 @@ use crate::core::{blob, hash};
 pub struct HashObjectArgs {
     /// Path to the file to hash
     pub file: PathBuf,
+    /// Current directory for the operation (injected by TUI)
+    pub dir: Option<PathBuf>,
 }
 
 pub fn run(args: &HashObjectArgs) -> Result<String> {
