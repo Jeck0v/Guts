@@ -55,6 +55,7 @@ guts-wpkg/tools/guts.exe
 #IA
 CLAUSE.md
 .cursorrules
+#CLAUSE.md
 
 # === Compilation .exe ISS ====
 # Its like a .env for ISS so dont push it !!!

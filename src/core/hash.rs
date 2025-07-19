@@ -29,3 +29,15 @@ pub fn write_object(obj: &impl GitObject) -> Result<String> {
 
     Ok(hex)
 }
+
+pub fn hash_blob(data: &[u8]) -> Result<String> {
+    let header = format!("blob {}\0", data.len());
+    let mut hasher = Sha1::new();
+
+    hasher.update(header.as_bytes());
+    hasher.update(data);
+
+    let result = hasher.finalize();
+
+    Ok(hex::encode(result))
+}
