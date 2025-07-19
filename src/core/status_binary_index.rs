@@ -12,17 +12,17 @@ pub struct IndexEntry {
     pub blob_hash: String,  // SHA-1 hash of the file content
 }
 
-/// Recursively lists all files in the working directory, excluding .git and .guts folders.
+/// Recursively lists all files in the working directory, excluding .git folders.
 pub fn list_working_dir_files(root: &Path) -> Result<Vec<PathBuf>> {
     let mut entries = Vec::new();
 
     let walker = WalkDir::new(root)
         .into_iter()
         .filter_entry(|e| {
-            // Skip .git and .guts directories
+            // Skip .git directory
             !e.path().components().any(|c| {
                 let s = c.as_os_str().to_string_lossy();
-                s == ".git" || s == ".guts"
+                s == ".git"
             })
         });
 

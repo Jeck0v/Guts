@@ -6,6 +6,8 @@ use crate::core::{hash, build_tree};
 #[derive(Args)]
 pub struct WriteTreeArgs {
     pub dir: Option<PathBuf>,
+    /// Current directory for the operation (injected by TUI)
+    pub tui_dir: Option<PathBuf>,
 }
 
 pub fn run(args: &WriteTreeArgs) -> Result<String> {

@@ -11,7 +11,7 @@ pub struct CatFileArgs {
     /// SHA or partial SHA of the object to read
     pub sha: String,
 
-    /// Path to the `.guts` directory (defaults to current directory + ".guts")
+    /// Path to the `.git` directory (defaults to current directory + ".git")
     #[arg(long, value_name = "DIR")]
     pub git_dir: Option<PathBuf>,
 }
@@ -23,21 +23,21 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
         return Err(anyhow!("SHA is too small (need at least 4 characters)"));
     }
 
-    // Determine the guts directory path
-    let guts_dir = match &args.git_dir {
+    // Determine the git directory path
+    let git_dir = match &args.git_dir {
         Some(dir) => dir.clone(),
         None => {
             let current_dir = env::current_dir().context("failed to get current directory")?;
-            current_dir.join(".guts")
+            current_dir.join(".git")
         }
     };
 
-    if !guts_dir.exists() {
-        return Err(anyhow!("no .guts directory found at {}", guts_dir.display()));
+    if !git_dir.exists() {
+        return Err(anyhow!("no .git directory found at {}", git_dir.display()));
     }
 
     // Get the path to the object file
-    let object_path = cat::get_object_path(&guts_dir, sha);
+    let object_path = cat::get_object_path(&git_dir, sha);
 
     // Read the object file contents
     let content = fs::read(&object_path)

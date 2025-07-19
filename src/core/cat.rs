@@ -15,12 +15,12 @@ pub enum ParsedObject {
     Other(String, Vec<u8>)
 }
 
-/// Given the root `.guts` directory and a SHA-1 hash string,
+/// Given the root `.git` directory and a SHA-1 hash string,
 /// constructs and returns the path to the object file.
 ///
 /// Git stores objects in subdirectories named by the first two
 /// characters of their SHA, with the remainder as the filename:
-/// `.guts/objects/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY`
+/// `.git/objects/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY`
 pub fn get_object_path(guts_dir: &Path, sha: &str) -> PathBuf {
     let (dir, file) = sha.split_at(2);
     guts_dir.join("objects").join(dir).join(file)

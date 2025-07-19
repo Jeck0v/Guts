@@ -338,7 +338,11 @@ impl App {
         match Cli::try_parse_from(args) {
             Ok(cli) => {
                 match cli.command {
-                    Commands::Init(init_args) => {
+                    Commands::Init(mut init_args) => {
+                        // Use TUI current directory if no directory specified
+                        if init_args.dir.is_none() {
+                            init_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        }
                         match guts::commands::init::run(&init_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -352,7 +356,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::HashObject(hash_args) => {
+                    Commands::HashObject(mut hash_args) => {
+                        // Inject current TUI directory
+                        hash_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::hash_object::run(&hash_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -366,7 +372,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::CatFile(cat_args) => {
+                    Commands::CatFile(mut cat_args) => {
+                        // Inject current TUI directory
+                        cat_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::cat_file::run(&cat_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -380,7 +388,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::WriteTree(tree_args) => {
+                    Commands::WriteTree(mut tree_args) => {
+                        // Inject current TUI directory
+                        tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::write_tree::run(&tree_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -394,7 +404,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::CommitTree(commit_args) => {
+                    Commands::CommitTree(mut commit_args) => {
+                        // Inject current TUI directory
+                        commit_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::commit_tree::run(&commit_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -408,7 +420,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::Status(status_args) => {
+                    Commands::Status(mut status_args) => {
+                        // Inject current TUI directory
+                        status_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::status::run(&status_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
@@ -422,7 +436,9 @@ impl App {
                             }),
                         }
                     }
-                    Commands::Add(add_args) => {
+                    Commands::Add(mut add_args) => {
+                        // Inject current TUI directory
+                        add_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::add::run(&add_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),

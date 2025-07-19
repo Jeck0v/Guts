@@ -14,7 +14,7 @@ use crate::core::{blob, hash};
 /// # Returns
 /// * `Result<Tree>` - A Git tree object representing the directory contents, or an error.
 ///
-/// This function reads the directory entries, skips the `.guts` folder,
+/// This function reads the directory entries, skips the `.git` folder,
 /// hashes all files as blobs, and collects their info as tree entries.
 pub fn build_tree(dir: &Path) -> Result<Tree> {
     let mut entries = Vec::new(); // Container for the tree entries (files)
@@ -27,8 +27,8 @@ pub fn build_tree(dir: &Path) -> Result<Tree> {
             .into_string()
             .expect("File name is not valid UTF-8"); // Convert OsString to String
 
-        if name == ".guts" {
-            // Skip the internal .guts directory (where your git objects may be stored)
+        if name == ".git" {
+            // Skip the internal .git directory (where your git objects are stored)
             continue;
         }
 

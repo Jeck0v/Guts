@@ -14,15 +14,22 @@ pub struct CommitObject {
     pub message: String,
     #[arg(long)]
     pub git_dir: Option<PathBuf>,
+    /// Current directory for the operation (injected by TUI)
+    pub dir: Option<PathBuf>,
 }
 
 pub fn run(args: &CommitObject) -> Result<String> {
+    let current_dir = args
+        .dir
+        .clone()
+        .unwrap_or_else(|| env::current_dir().expect("could not get the current dir"));
+    
     let git_dir = args.git_dir.clone().unwrap_or_else(|| {
-        env::current_dir().expect("could not get the current dir").join(".guts")
+        current_dir.join(".git")
     });
 
     if !git_dir.exists() {
-        anyhow::bail!("No .guts directory at {}", git_dir.display());
+        anyhow::bail!("No .git directory at {}", git_dir.display());
     }
 
     let commit = Commit {
