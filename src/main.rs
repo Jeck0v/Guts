@@ -9,6 +9,7 @@ fn main() -> Result<()> {
 
     // refactored for TUI output
     match cli.command {
+        
         Commands::Init(args) => {
             let output = guts::commands::init::run(&args)?;
             println!("{}", output);
@@ -30,6 +31,7 @@ fn main() -> Result<()> {
             println!("{}", output);
         }
         Commands::Tui => terminal::run_app()?,
+      Commands::Status(args) => guts::commands::status::run(&args)?,
     }
 
     Ok(())
