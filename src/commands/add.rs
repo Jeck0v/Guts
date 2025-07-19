@@ -11,6 +11,7 @@ pub struct AddArgs {
     #[arg(required = true)]
     pub files: Vec<PathBuf>,
     /// Current directory for the operation (injected by TUI)
+    #[arg(last = true)]
     pub dir: Option<PathBuf>,
 }
 

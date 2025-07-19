@@ -21,7 +21,7 @@ fn test_add_single_file() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Ajouté : hello.txt"));
+        .stdout(predicate::str::contains("Added: hello.txt"));
 
     // Vérifier que l'index JSON a été créé
     let index_path = temp.path().join(".git/simple_index.json");
@@ -54,7 +54,7 @@ fn test_add_multiple_files() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Ajoutés 2 fichiers"));
+        .stdout(predicate::str::contains("Added 2 files"));
 
     // Vérifier l'index
     let index_path = temp.path().join(".git/simple_index.json");
