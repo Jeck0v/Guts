@@ -36,10 +36,8 @@ Thumbs.db
 *.swp
 *.swo
 
-# === Optional ===
+# Other
 .env
-.cursorrules
-CLAUDE.md
 
 # === Project ===
 .guts/
@@ -53,7 +51,12 @@ flake.nix
 guts-wpkg/*.nupkg
 # Rust binary, only used for local pack
 guts-wpkg/tools/guts.exe
+
 #IA
 CLAUSE.md
-
+.cursorrules
 #CLAUSE.md
+
+# === Compilation .exe ISS ====
+# Its like a .env for ISS so dont push it !!!
+windows-installer/config.iss
