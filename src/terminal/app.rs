@@ -141,6 +141,7 @@ impl App {
             "guts rm",
             "guts add",
             "guts status",
+            "guts commit",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -470,6 +471,22 @@ impl App {
                         // Inject current TUI directory
                         rm_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::rm::run(&rm_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                    Commands::Commit(mut commit_args) => {
+                        // Inject current TUI directory
+                        commit_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::commit::run(&commit_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,

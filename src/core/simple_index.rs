@@ -1,7 +1,7 @@
 // Module for a simple Git index in JSON format
 // Educational alternative to Git's complex binary index
 
-use crate::core::{blob, hash};
+use crate::core::{blob, cat, hash};
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -132,4 +132,112 @@ pub fn add_file_to_index(file_path: &Path) -> Result<()> {
     index.add_file(file_path)?;
     index.save()?;
     Ok(())
+}
+
+/// Get the files committed in the current HEAD
+/// Returns a HashMap: relative file path -> SHA-1 hash
+pub fn get_committed_files() -> Result<HashMap<String, String>> {
+    let repo_root = find_repo_root()?;
+    let git_dir = repo_root.join(".git");
+    
+    // Read HEAD to get current commit
+    let head_path = git_dir.join("HEAD");
+    if !head_path.exists() {
+        // No commits yet
+        return Ok(HashMap::new());
+    }
+    
+    let head_content = fs::read_to_string(&head_path)?;
+    let head_content = head_content.trim();
+    
+    // Get the commit hash
+    let commit_hash = if head_content.starts_with("ref: ") {
+        // HEAD points to a branch
+        let ref_path = head_content.strip_prefix("ref: ").unwrap();
+        let ref_file = git_dir.join(ref_path);
+        
+        if !ref_file.exists() {
+            // Branch exists but no commits yet
+            return Ok(HashMap::new());
+        }
+        
+        fs::read_to_string(ref_file)?.trim().to_string()
+    } else {
+        // Detached HEAD, direct commit hash
+        head_content.to_string()
+    };
+    
+    // Read the commit object to get the tree hash
+    let commit_obj_path = cat::get_object_path(&git_dir, &commit_hash);
+    if !commit_obj_path.exists() {
+        return Ok(HashMap::new());
+    }
+    
+    let commit_data = fs::read(&commit_obj_path)?;
+    let decompressed = decompress_object(&commit_data)?;
+    let parsed = cat::parse_object(&decompressed)?;
+    
+    let tree_hash = match parsed {
+        cat::ParsedObject::Commit(commit) => commit.tree,
+        _ => return Err(anyhow!("HEAD does not point to a commit object")),
+    };
+    
+    // Read the tree object to get the files
+    get_files_from_tree(&git_dir, &tree_hash, "")
+}
+
+/// Recursively get all files from a tree object
+/// Returns a HashMap: relative file path -> SHA-1 hash
+fn get_files_from_tree(git_dir: &Path, tree_hash: &str, prefix: &str) -> Result<HashMap<String, String>> {
+    let mut files = HashMap::new();
+    
+    let tree_obj_path = cat::get_object_path(git_dir, tree_hash);
+    if !tree_obj_path.exists() {
+        return Ok(files);
+    }
+    
+    let tree_data = fs::read(&tree_obj_path)?;
+    let decompressed = decompress_object(&tree_data)?;
+    let parsed = cat::parse_object(&decompressed)?;
+    
+    let entries = match parsed {
+        cat::ParsedObject::Tree(entries) => entries,
+        _ => return Err(anyhow!("Object is not a tree")),
+    };
+    
+    for entry in entries {
+        let file_path = if prefix.is_empty() {
+            entry.name.clone()
+        } else {
+            format!("{}/{}", prefix, entry.name)
+        };
+        
+        // For simplicity, we only handle regular files (mode 100644)
+        // In a full implementation, we would recursively handle subdirectories
+        if entry.mode == "100644" {
+            let hash_hex = hex::encode(entry.hash);
+            files.insert(file_path, hash_hex);
+        }
+    }
+    
+    Ok(files)
+}
+
+/// Decompress Git object data (Git uses zlib compression)
+/// But our simple implementation stores objects uncompressed, so try both
+fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
+    // First try to decompress as zlib (standard Git format)
+    use std::io::Read;
+    
+    let mut decoder = flate2::read::ZlibDecoder::new(data);
+    let mut decompressed = Vec::new();
+    
+    match decoder.read_to_end(&mut decompressed) {
+        Ok(_) => Ok(decompressed),
+        Err(_) => {
+            // If decompression fails, assume data is already uncompressed
+            // (our simple implementation stores objects uncompressed)
+            Ok(data.to_vec())
+        }
+    }
 }

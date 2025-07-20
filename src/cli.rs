@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{add, cat_file, commit_tree, hash_object, init, rm, status, write_tree};
+use crate::commands::{add, cat_file, commit, commit_tree, hash_object, init, rm, status, write_tree};
 
 #[derive(Parser)]
 #[command(
@@ -39,6 +39,9 @@ pub enum Commands {
 
     /// Remove files from the staging area
     Rm(rm::RmArgs),
+
+    /// Create a new commit
+    Commit(commit::CommitArgs),
 
     /// Launch graphical terminal UI
     Tui,
