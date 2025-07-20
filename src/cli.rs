@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree, status, add};
+use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree, status, add, rm};
 
 #[derive(Parser)]
 #[command(name = "guts", version, author, about = "A Git implementation in Rust like Guts")]
@@ -31,6 +31,9 @@ pub enum Commands {
 
     /// Add files to the staging area
     Add(add::AddArgs),
+
+    /// Remove files from the staging area
+    Rm(rm::RmArgs),
 
     /// Launch graphical terminal UI
     Tui,

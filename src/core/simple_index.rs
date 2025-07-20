@@ -86,7 +86,7 @@ impl SimpleIndex {
 }
 
 /// Find Git repository root (directory containing .git/)
-fn find_repo_root() -> Result<PathBuf> {
+pub fn find_repo_root() -> Result<PathBuf> {
     let mut current = std::env::current_dir()
         .with_context(|| "unable to get current directory")?;
 
