@@ -50,6 +50,10 @@ fn main() -> Result<()> {
             let output = guts::commands::rm::run(&args)?;
             println!("{}", output);
         }
+        Commands::Commit(args) => {
+            let output = guts::commands::commit::run(&args)?;
+            println!("{}", output);
+        }
     }
 
     Ok(())
