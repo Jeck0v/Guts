@@ -1,9 +1,9 @@
 use anyhow::Result;
+use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use guts::cli::{Cli, Commands};
 use std::fs;
 use std::process::{Command, Stdio};
-use clap::Parser;
-use guts::cli::{Cli, Commands};
 
 #[derive(Debug, Clone)]
 pub struct CommandResult {
@@ -21,9 +21,9 @@ pub struct App {
     pub input_history_index: usize,
     pub should_quit: bool,
     pub current_dir: String,
-    pub scroll_offset: usize, // scroll position in history
-    pub max_visible_lines: usize, // max number of lines visible
-    pub autocomplete_list: Vec<String>,     // auto complete
+    pub scroll_offset: usize,           // scroll position in history
+    pub max_visible_lines: usize,       // max number of lines visible
+    pub autocomplete_list: Vec<String>, // auto complete
     pub show_autocomplete: bool,
     pub autocomplete_index: usize,
 }
@@ -55,8 +55,8 @@ impl App {
     pub fn new() -> Self {
         Self::default()
     }
-// ======================= Line & Scroll =======================
-// calc line hysto
+    // ======================= Line & Scroll =======================
+    // calc line hysto
     pub fn total_history_lines(&self) -> usize {
         if self.command_history.is_empty() {
             return 4;
@@ -105,7 +105,7 @@ impl App {
         self.max_visible_lines = if height > 8 { height - 6 } else { 2 };
     }
 
-// ================= Auto complete: helpers =================
+    // ================= Auto complete: helpers =================
     fn update_autocomplete(&mut self) {
         use std::collections::HashSet;
 
@@ -126,7 +126,21 @@ impl App {
 
         // basic command
         let basic_cmds = vec![
-        "cd", "ls", "pwd", "clear", "exit", "quit", "guts", "guts init", "guts hash-object", "guts cat-file", "guts write-tree", "guts commit-tree"
+            "cd",
+            "ls",
+            "pwd",
+            "clear",
+            "exit",
+            "quit",
+            "guts",
+            "guts init",
+            "guts hash-object",
+            "guts cat-file",
+            "guts write-tree",
+            "guts commit-tree",
+            "guts rm",
+            "guts add",
+            "guts status",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -154,7 +168,7 @@ impl App {
         }
     }
 
-// ======================= EVENT KEY =======================
+    // ======================= EVENT KEY =======================
     pub fn handle_key_event(&mut self, key: KeyEvent) -> Result<()> {
         match key.code {
             KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -203,7 +217,9 @@ impl App {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
                     self.scroll_down();
                 } else {
-                    if !self.input_history.is_empty() && self.input_history_index < self.input_history.len() - 1 {
+                    if !self.input_history.is_empty()
+                        && self.input_history_index < self.input_history.len() - 1
+                    {
                         self.input_history_index += 1;
                         self.input = self.input_history[self.input_history_index].clone();
                         self.cursor_position = self.input.len();
@@ -245,7 +261,7 @@ impl App {
         }
         Ok(())
     }
-// ======================= EXECUTE COMMANDS =======================
+    // ======================= EXECUTE COMMANDS =======================
     pub fn execute_command(&mut self) -> Result<()> {
         let command = self.input.trim().to_string();
 
@@ -266,19 +282,19 @@ impl App {
                 self.scroll_offset = 0; // reset scroll position
                 return Ok(());
             }
-            "pwd" => {
-                CommandResult {
-                    command: command.clone(),
-                    output: self.current_dir.clone(),
-                    error: None,
-                }
-            }
+            "pwd" => CommandResult {
+                command: command.clone(),
+                output: self.current_dir.clone(),
+                error: None,
+            },
             cmd if cmd.starts_with("cd") => {
                 let parts: Vec<&str> = cmd.split_whitespace().collect();
                 let target_dir = if parts.len() > 1 {
                     std::path::PathBuf::from(&self.current_dir).join(parts[1])
                 } else {
-                    std::env::var("HOME").unwrap_or_else(|_| self.current_dir.clone()).into()
+                    std::env::var("HOME")
+                        .unwrap_or_else(|_| self.current_dir.clone())
+                        .into()
                 };
 
                 match target_dir.canonicalize() {
@@ -297,29 +313,27 @@ impl App {
                     },
                 }
             }
-            "ls" => {
-                match fs::read_dir(&self.current_dir) {
-                    Ok(entries) => {
-                        let mut lines = vec![];
-                        for entry in entries.flatten() {
-                            if let Ok(name) = entry.file_name().into_string() {
-                                lines.push(name);
-                            }
-                        }
-                        lines.sort();
-                        CommandResult {
-                            command: command.clone(),
-                            output: lines.join("\n"),
-                            error: None,
+            "ls" => match fs::read_dir(&self.current_dir) {
+                Ok(entries) => {
+                    let mut lines = vec![];
+                    for entry in entries.flatten() {
+                        if let Ok(name) = entry.file_name().into_string() {
+                            lines.push(name);
                         }
                     }
-                    Err(e) => CommandResult {
+                    lines.sort();
+                    CommandResult {
                         command: command.clone(),
-                        output: String::new(),
-                        error: Some(format!("ls error: {}", e)),
-                    },
+                        output: lines.join("\n"),
+                        error: None,
+                    }
                 }
-            }
+                Err(e) => CommandResult {
+                    command: command.clone(),
+                    output: String::new(),
+                    error: Some(format!("ls error: {}", e)),
+                },
+            },
             cmd if cmd.starts_with("guts ") => self.execute_guts_command(&command)?,
             _ => self.execute_system_command(&command)?,
         };
@@ -331,7 +345,7 @@ impl App {
         self.scroll_to_bottom(); // Auto-scroll after new command
         Ok(())
     }
-// ======================= Handles only guts subcommands =======================
+    // ======================= Handles only guts subcommands =======================
     fn execute_guts_command(&mut self, command: &str) -> Result<CommandResult> {
         let args: Vec<&str> = command.split_whitespace().collect();
 
@@ -482,8 +496,8 @@ impl App {
             }),
         }
     }
-// ======================= System COMMANDS =======================
-// Executes shell/system-level commands
+    // ======================= System COMMANDS =======================
+    // Executes shell/system-level commands
     fn execute_system_command(&mut self, command: &str) -> Result<CommandResult> {
         let parts: Vec<&str> = command.split_whitespace().collect();
         if parts.is_empty() {
@@ -509,7 +523,11 @@ impl App {
                 Ok(CommandResult {
                     command: command.to_string(),
                     output: stdout,
-                    error: if stderr.is_empty() { None } else { Some(stderr) },
+                    error: if stderr.is_empty() {
+                        None
+                    } else {
+                        Some(stderr)
+                    },
                 })
             }
             Err(e) => Ok(CommandResult {
