@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use crate::core::{blob, hash};
 use anyhow::{anyhow, Context, Result};
 use clap::Args;
-use crate::core::{blob, hash};
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct HashObjectArgs {
@@ -22,8 +22,7 @@ pub fn run(args: &HashObjectArgs) -> Result<String> {
         return Err(anyhow!("path {:?} is a directory", path));
     }
 
-    let data = std::fs::read(path)
-        .with_context(|| format!("failed to read file {:?}", path))?;
+    let data = std::fs::read(path).with_context(|| format!("failed to read file {:?}", path))?;
 
     let blob = blob::Blob::new(data);
     let oid = hash::write_object(&blob)?;

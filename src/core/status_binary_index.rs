@@ -1,30 +1,28 @@
-use std::fs;
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
+use std::collections::HashSet;
+use std::fs;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::core::hash;
 
 /// Represents a file entry from the Git index.
 pub struct IndexEntry {
-    pub path: PathBuf,      // Relative file path
-    pub blob_hash: String,  // SHA-1 hash of the file content
+    pub path: PathBuf,     // Relative file path
+    pub blob_hash: String, // SHA-1 hash of the file content
 }
 
 /// Recursively lists all files in the working directory, excluding .git folders.
 pub fn list_working_dir_files(root: &Path) -> Result<Vec<PathBuf>> {
     let mut entries = Vec::new();
 
-    let walker = WalkDir::new(root)
-        .into_iter()
-        .filter_entry(|e| {
-            // Skip .git directory
-            !e.path().components().any(|c| {
-                let s = c.as_os_str().to_string_lossy();
-                s == ".git"
-            })
-        });
+    let walker = WalkDir::new(root).into_iter().filter_entry(|e| {
+        // Skip .git directory
+        !e.path().components().any(|c| {
+            let s = c.as_os_str().to_string_lossy();
+            s == ".git"
+        })
+    });
 
     for entry in walker {
         let entry = entry?;
@@ -120,11 +118,10 @@ pub fn is_modified_single(entry: &IndexEntry, project_root: &Path) -> Result<boo
         return Ok(true);
     }
 
-    let content = fs::read(&file_path)
-        .with_context(|| format!("Failed to read file {:?}", file_path))?;
+    let content =
+        fs::read(&file_path).with_context(|| format!("Failed to read file {:?}", file_path))?;
 
-    let computed_hash = hash::hash_blob(&content)
-        .context("Failed to compute blob hash")?;
+    let computed_hash = hash::hash_blob(&content).context("Failed to compute blob hash")?;
 
     Ok(computed_hash != entry.blob_hash)
 }
@@ -132,7 +129,9 @@ pub fn is_modified_single(entry: &IndexEntry, project_root: &Path) -> Result<boo
 /// Returns a list of files that were modified or deleted from the index,
 /// by comparing the working directory with the Git index entries.
 pub fn is_modified(index_entries: &[IndexEntry], guts_dir: &Path) -> Result<Vec<PathBuf>> {
-    let project_root = guts_dir.parent().context("Cannot get parent directory of guts_dir")?;
+    let project_root = guts_dir
+        .parent()
+        .context("Cannot get parent directory of guts_dir")?;
     let mut modified_files = Vec::new();
 
     for entry in index_entries {
@@ -144,8 +143,10 @@ pub fn is_modified(index_entries: &[IndexEntry], guts_dir: &Path) -> Result<Vec<
     Ok(modified_files)
 }
 
-
-pub fn get_staged_changes(index_entries: &[IndexEntry], head_entries: &[IndexEntry]) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
+pub fn get_staged_changes(
+    index_entries: &[IndexEntry],
+    head_entries: &[IndexEntry],
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
     let mut head_map = std::collections::HashMap::new();
     for entry in head_entries {
         head_map.insert(&entry.path, &entry.blob_hash);

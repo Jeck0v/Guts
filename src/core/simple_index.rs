@@ -1,12 +1,12 @@
 // Module for a simple Git index in JSON format
 // Educational alternative to Git's complex binary index
 
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::collections::HashMap;
+use crate::core::{blob, hash};
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use crate::core::{blob, hash};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Simple structure for Git index
 /// Stores only "staged" files with their SHA-1 hash
@@ -21,30 +21,30 @@ impl SimpleIndex {
     /// If file doesn't exist, return empty index
     pub fn load() -> Result<Self> {
         let index_path = get_simple_index_path()?;
-        
+
         if !index_path.exists() {
             return Ok(SimpleIndex::default());
         }
 
         let content = fs::read_to_string(&index_path)
             .with_context(|| format!("unable to read {:?}", index_path))?;
-        
-        let index: SimpleIndex = serde_json::from_str(&content)
-            .with_context(|| "invalid JSON in index")?;
-        
+
+        let index: SimpleIndex =
+            serde_json::from_str(&content).with_context(|| "invalid JSON in index")?;
+
         Ok(index)
     }
 
     /// Save index to .git/simple_index.json
     pub fn save(&self) -> Result<()> {
         let index_path = get_simple_index_path()?;
-        
-        let content = serde_json::to_string_pretty(self)
-            .with_context(|| "unable to serialize index")?;
-        
+
+        let content =
+            serde_json::to_string_pretty(self).with_context(|| "unable to serialize index")?;
+
         fs::write(&index_path, content)
             .with_context(|| format!("unable to write {:?}", index_path))?;
-        
+
         Ok(())
     }
 
@@ -70,7 +70,7 @@ impl SimpleIndex {
 
         // Add to our map
         self.files.insert(relative_path, file_hash);
-        
+
         Ok(())
     }
 
@@ -87,8 +87,7 @@ impl SimpleIndex {
 
 /// Find Git repository root (directory containing .git/)
 pub fn find_repo_root() -> Result<PathBuf> {
-    let mut current = std::env::current_dir()
-        .with_context(|| "unable to get current directory")?;
+    let mut current = std::env::current_dir().with_context(|| "unable to get current directory")?;
 
     loop {
         let git_dir = current.join(".git");
@@ -112,7 +111,8 @@ fn get_simple_index_path() -> Result<PathBuf> {
 /// Convert absolute path to relative path from repo root
 fn get_relative_path(file_path: &Path) -> Result<String> {
     let repo_root = find_repo_root()?;
-    let relative = file_path.strip_prefix(&repo_root)
+    let relative = file_path
+        .strip_prefix(&repo_root)
         .with_context(|| "file is not in the repository")?;
     Ok(relative.to_string_lossy().to_string())
 }

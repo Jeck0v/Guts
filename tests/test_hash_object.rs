@@ -30,10 +30,6 @@ fn test_hash_object_creates_blob_and_prints_oid() {
     let oid = String::from_utf8_lossy(&oid_output).trim().to_string();
     let (dir, file_name) = oid.split_at(2);
 
-    let object_path = temp
-        .path()
-        .join(".git/objects")
-        .join(dir)
-        .join(file_name);
+    let object_path = temp.path().join(".git/objects").join(dir).join(file_name);
     assert!(object_path.exists());
 }

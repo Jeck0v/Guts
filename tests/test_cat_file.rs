@@ -1,5 +1,5 @@
-use std::{fs, path::PathBuf};
 use std::env;
+use std::{fs, path::PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use clap::Args;
@@ -68,7 +68,7 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
             }
             println!("message: {}", data.message);
         }
-    
+
         cat::ParsedObject::Other(obj_type, data) => {
             println!("Unknown object type: {}", obj_type);
             println!("{:?}", data);

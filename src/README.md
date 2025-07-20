@@ -14,12 +14,12 @@ gust/
 │   │   ├── init.rs
 │   │   ├── hash_object.rs
 │   │   └── ...
-│   ├── terminal/                   # TUI Ratatui 
+│   ├── terminal/                   # TUI Ratatui
 │   │   ├── mod.rs
 │   │   ├── app.rs
 │   │   ├── run_app.rs
-│   │   └── ui.rs             
-│   └── cli.rs                      # CLI argument parsing using `clap`                  
+│   │   └── ui.rs
+│   └── cli.rs                      # CLI argument parsing using `clap`
 ├── tests/                          # Integration tests
 │   ├── test_init.rs
 │   └── ...
@@ -28,7 +28,7 @@ gust/
 ├── Cargo.toml                      # Project configuration
 └── README.md
 ```
---- 
+---
 ### main.rs
 It launches the program <br>
 It calls the CLI parser `cli.rs`, then sends to the right commands (commands/...)

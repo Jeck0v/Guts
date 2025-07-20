@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use crate::core::object::{Tree, TreeEntry};
+use crate::core::{hash, simple_index};
 use anyhow::Result;
 use clap::Args;
-use crate::core::{hash, simple_index};
-use crate::core::object::{Tree, TreeEntry};
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct WriteTreeArgs {
@@ -19,10 +19,10 @@ pub fn run(args: &WriteTreeArgs) -> Result<String> {
 
     // Load the JSON index
     let index = simple_index::SimpleIndex::load()?;
-    
+
     // Create the tree from the index (not the filesystem)
     let tree = build_tree_from_index(&index)?;
-    
+
     // Write the tree object and return its hash
     let oid = hash::write_object(&tree)?;
 

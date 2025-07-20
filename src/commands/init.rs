@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use crate::core::repo;
 use anyhow::{anyhow, Context, Result};
 use clap::Args;
-use crate::core::repo;
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct InitArgs {
@@ -22,5 +22,8 @@ pub fn run(args: &InitArgs) -> Result<String> {
     }
 
     repo::init(&dir).with_context(|| format!("failed to initialize repository in {:?}", dir))?;
-    Ok(format!("Initialized empty Guts repository in {:?}", git_dir))
+    Ok(format!(
+        "Initialized empty Guts repository in {:?}",
+        git_dir
+    ))
 }

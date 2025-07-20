@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use crate::core::{build_tree, hash};
 use anyhow::Result;
 use clap::Args;
-use crate::core::{hash, build_tree};
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct WriteTreeArgs {

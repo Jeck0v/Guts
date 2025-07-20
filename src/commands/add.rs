@@ -18,22 +18,22 @@ pub struct AddArgs {
 /// Recursively collect all files from a directory (excludes .git)
 fn collect_files_recursively(dir: &PathBuf) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
-    
+
     if dir.is_file() {
         files.push(dir.clone());
         return Ok(files);
     }
-    
+
     let entries = fs::read_dir(dir)?;
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        
+
         // Ignore .git directory
         if path.file_name().and_then(|s| s.to_str()) == Some(".git") {
             continue;
         }
-        
+
         if path.is_file() {
             files.push(path);
         } else if path.is_dir() {
@@ -41,7 +41,7 @@ fn collect_files_recursively(dir: &PathBuf) -> Result<Vec<PathBuf>> {
             files.append(&mut sub_files);
         }
     }
-    
+
     Ok(files)
 }
 

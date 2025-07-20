@@ -1,9 +1,14 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{hash_object, init, cat_file, write_tree, commit_tree, status, add, rm};
+use crate::commands::{add, cat_file, commit_tree, hash_object, init, rm, status, write_tree};
 
 #[derive(Parser)]
-#[command(name = "guts", version, author, about = "A Git implementation in Rust like Guts")]
+#[command(
+    name = "guts",
+    version,
+    author,
+    about = "A Git implementation in Rust like Guts"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

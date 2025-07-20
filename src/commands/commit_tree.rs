@@ -1,9 +1,9 @@
-use std::env;
-use clap::Args;
-use std::path::PathBuf;
-use anyhow::Result;
 use crate::core::hash;
 use crate::core::object::Commit;
+use anyhow::Result;
+use clap::Args;
+use std::env;
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct CommitObject {
@@ -23,10 +23,11 @@ pub fn run(args: &CommitObject) -> Result<String> {
         .dir
         .clone()
         .unwrap_or_else(|| env::current_dir().expect("could not get the current dir"));
-    
-    let git_dir = args.git_dir.clone().unwrap_or_else(|| {
-        current_dir.join(".git")
-    });
+
+    let git_dir = args
+        .git_dir
+        .clone()
+        .unwrap_or_else(|| current_dir.join(".git"));
 
     if !git_dir.exists() {
         anyhow::bail!("No .git directory at {}", git_dir.display());

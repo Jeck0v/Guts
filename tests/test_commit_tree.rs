@@ -1,5 +1,5 @@
-use guts::core::{object::{Commit, GitObject}};
 use guts::core::cat::{parse_object, ParsedObject};
+use guts::core::object::{Commit, GitObject};
 
 #[test]
 fn test_parse_commit_object() {
@@ -26,7 +26,10 @@ fn test_parse_commit_object() {
             assert_eq!(parsed_commit.message, commit.message, "Message mismatch");
         }
         ParsedObject::Other(obj_type, _) => {
-            panic!("Unexpected object type: got ParsedObject::Other: {}", obj_type);
+            panic!(
+                "Unexpected object type: got ParsedObject::Other: {}",
+                obj_type
+            );
         }
         _ => panic!("Unexpected object type"),
     }

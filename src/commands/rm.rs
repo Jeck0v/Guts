@@ -19,14 +19,15 @@ pub struct RmArgs {
 fn get_relative_path(file_path: &PathBuf) -> Result<String> {
     let current_dir = std::env::current_dir()?;
     let repo_root = simple_index::find_repo_root()?;
-    
+
     let absolute_path = if file_path.is_absolute() {
         file_path.clone()
     } else {
         current_dir.join(file_path)
     };
-    
-    let relative = absolute_path.strip_prefix(&repo_root)
+
+    let relative = absolute_path
+        .strip_prefix(&repo_root)
         .map_err(|_| anyhow!("file is not in the repository"))?;
     Ok(relative.to_string_lossy().to_string())
 }
@@ -35,7 +36,7 @@ fn get_relative_path(file_path: &PathBuf) -> Result<String> {
 fn remove_file_from_index(file_path: &PathBuf) -> Result<bool> {
     let mut index = simple_index::SimpleIndex::load()?;
     let relative_path = get_relative_path(file_path)?;
-    
+
     if index.files.remove(&relative_path).is_some() {
         index.save()?;
         Ok(true)
@@ -74,7 +75,7 @@ pub fn run(args: &RmArgs) -> Result<String> {
 
         // Remove from index
         let was_in_index = remove_file_from_index(file_path)?;
-        
+
         if !was_in_index {
             return Err(anyhow!(
                 "fatal: pathspec '{}' did not match any files",
