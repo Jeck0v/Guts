@@ -7,3 +7,4 @@ pub mod commit_tree;
 pub mod status;                           // Version JSON (nouvelle)
 pub mod status_binary_version;            // Version binaire (préservée)
 pub mod add;
+pub mod rm;

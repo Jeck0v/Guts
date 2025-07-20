@@ -452,6 +452,22 @@ impl App {
                             }),
                         }
                     }
+                    Commands::Rm(mut rm_args) => {
+                        // Inject current TUI directory
+                        rm_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::rm::run(&rm_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),

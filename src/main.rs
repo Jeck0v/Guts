@@ -47,6 +47,10 @@ fn main() -> Result<()> {
             let output = guts::commands::add::run(&args)?;
             println!("{}", output);
         }
+        Commands::Rm(args) => {
+            let output = guts::commands::rm::run(&args)?;
+            println!("{}", output);
+        }
     }
 
     Ok(())
