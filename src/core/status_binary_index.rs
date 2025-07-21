@@ -128,14 +128,13 @@ pub fn is_modified_single(entry: &IndexEntry, project_root: &Path) -> Result<boo
 
 /// Returns a list of files that were modified or deleted from the index,
 /// by comparing the working directory with the Git index entries.
-pub fn is_modified(index_entries: &[IndexEntry], guts_dir: &Path) -> Result<Vec<PathBuf>> {
-    let project_root = guts_dir
-        .parent()
-        .context("Cannot get parent directory of guts_dir")?;
+pub fn is_modified(index_entries: &[IndexEntry]) -> Result<Vec<PathBuf>> {
+    let project_root = std::env::current_dir()
+        .context("Cannot get current directory")?;
     let mut modified_files = Vec::new();
 
     for entry in index_entries {
-        if is_modified_single(entry, project_root)? {
+        if is_modified_single(entry, &project_root)? {
             modified_files.push(entry.path.clone());
         }
     }
