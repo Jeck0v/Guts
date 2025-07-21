@@ -66,6 +66,7 @@ fn main() -> Result<()> {
             if !output.is_empty() {
                 println!("{}", output);
             }
+        }
         Commands::LsTree(args) => {
             let output = guts::commands::ls_tree::run(&args)?;
             println!("{}", output);
