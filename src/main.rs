@@ -54,12 +54,20 @@ fn main() -> Result<()> {
             let output = guts::commands::commit::run(&args)?;
             println!("{}", output);
         }
+        Commands::RevParse(args) => {
+            let output = guts::commands::rev_parse::run(&args)?;
+            println!("{}", output)
+        }
         Commands::Log(args) => {
             let output = guts::commands::log::run(&args)?;
             println!("{}", output);
         }
         Commands::LsTree(args) => {
             let output = guts::commands::ls_tree::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::ShowRef(args) => {
+            let output = guts::commands::show_ref::run(&args)?;
             println!("{}", output);
         }
     }

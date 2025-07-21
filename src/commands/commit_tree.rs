@@ -12,8 +12,6 @@ pub struct CommitObject {
     pub parent: Option<String>,
     #[arg(short = 'm', long)]
     pub message: String,
-    #[arg(long)]
-    pub git_dir: Option<PathBuf>,
     /// Current directory for the operation (injected by TUI)
     pub dir: Option<PathBuf>,
 }
@@ -24,10 +22,7 @@ pub fn run(args: &CommitObject) -> Result<String> {
         .clone()
         .unwrap_or_else(|| env::current_dir().expect("could not get the current dir"));
 
-    let git_dir = args
-        .git_dir
-        .clone()
-        .unwrap_or_else(|| current_dir.join(".git"));
+    let git_dir = current_dir.join(".git");
 
     if !git_dir.exists() {
         anyhow::bail!("No .git directory at {}", git_dir.display());
