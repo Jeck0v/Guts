@@ -39,6 +39,9 @@ fn render_ascii_art(f: &mut Frame, area: Rect) {
 
     Available Commands:
     • guts init
+    • guts add .
+    • guts status
+    • guts commit -m "message"
     • ls, pwd, cd
     • clear, exit
 
@@ -47,11 +50,6 @@ fn render_ascii_art(f: &mut Frame, area: Rect) {
     • Ctrl+↑/↓ - Scroll output
     • Ctrl+C - Quit
     • Enter - Execute command
-
-    Soon:
-    • guts add .
-    • guts status
-    • guts commit -m "message"
 "#;
 
     let paragraph = Paragraph::new(ascii_art)
@@ -111,7 +109,7 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(Color::LightGreen),
             )]),
             Line::from(vec![Span::styled(
-                "Type 'guts' commands or regular shell commands.",
+                "Type 'guts --help' commands or regular shell commands.",
                 Style::default().fg(Color::Gray),
             )]),
             Line::from(vec![Span::styled(
@@ -154,9 +152,9 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
 
     let total_lines = app.total_history_lines();
     let title = if total_lines > app.max_visible_lines {
-        format!("History ({}↑↓{})", app.scroll_offset + 1, total_lines)
+        format!("Monitor ({}↑↓{})", app.scroll_offset + 1, total_lines)
     } else {
-        "History".to_string()
+        "Monitor".to_string()
     };
 
     let visible_items: Vec<ListItem> = items
