@@ -142,6 +142,7 @@ impl App {
             "guts status",
             "guts commit",
             "guts log",
+            "guts ls-files",
             "guts show-ref",
         ];
         for cmd in basic_cmds {
@@ -550,6 +551,20 @@ impl App {
                         ls_tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::ls_tree::run(&ls_tree_args) {
                           Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                  Commands::LsFiles(ls_files_args) => {
+                        match guts::commands::ls_files::run(&ls_files_args) {
+                           Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,
                                 error: None,

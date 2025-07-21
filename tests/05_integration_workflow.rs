@@ -176,6 +176,44 @@ fn test_basic_git_workflow() {
     assert_eq!(stdout.trim(), commit_hash.trim());
     println!("✅ Rev-parse command works correctly");
 
+    // 14. Test ls-files command
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("ls-files");
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    // Verify ls-files shows the tracked file
+    assert!(stdout.contains("README.md"));
+    assert_eq!(stdout.trim(), "README.md", "ls-files should show only README.md");
+    println!("✅ ls-files command works correctly");
+
+    // 15. Test ls-tree command
+    // First get the tree hash from the current commit
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("cat-file").arg(commit_hash.trim());
+    let output = cmd.output().unwrap();
+    let commit_content = String::from_utf8_lossy(&output.stdout);
+    
+    // Extract tree hash
+    let tree_hash = commit_content
+        .lines()
+        .find(|line| line.starts_with("tree: "))
+        .unwrap()
+        .strip_prefix("tree: ")
+        .unwrap()
+        .trim();
+    
+    // Test ls-tree with the tree hash
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("ls-tree").arg(tree_hash);
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    // Verify ls-tree shows the blob entry for README.md
+    assert!(stdout.contains("README.md"));
+    assert!(predicate::str::is_match(r"100644 blob [a-f0-9]{40}\tREADME\.md").unwrap().eval(&stdout));
+    println!("✅ ls-tree command works correctly");
+
     println!("🎉 Basic workflow test passed successfully!");
 }
 

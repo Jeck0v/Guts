@@ -37,7 +37,6 @@ fn main() -> Result<()> {
             let output = guts::commands::commit_tree::run(&args)?;
             println!("{}", output);
         }
-        Commands::Tui => terminal::run_app()?,
         Commands::Status(args) => {
             let output = guts::commands::status::run(&args)?;
             println!("{}", output);
@@ -62,6 +61,12 @@ fn main() -> Result<()> {
             let output = guts::commands::log::run(&args)?;
             println!("{}", output);
         }
+        Commands::LsFiles(args) => {
+            let output = guts::commands::ls_files::run(&args)?;
+            if !output.is_empty() {
+                println!("{}", output);
+            }
+        }
         Commands::LsTree(args) => {
             let output = guts::commands::ls_tree::run(&args)?;
             println!("{}", output);
@@ -70,6 +75,7 @@ fn main() -> Result<()> {
             let output = guts::commands::show_ref::run(&args)?;
             println!("{}", output);
         }
+        Commands::Tui => terminal::run_app()?,  
     }
 
     Ok(())
