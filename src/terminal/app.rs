@@ -514,6 +514,20 @@ impl App {
                             }),
                         }
                     }
+                    Commands::LsFiles(ls_files_args) => {
+                        match guts::commands::ls_files::run(&ls_files_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),

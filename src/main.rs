@@ -58,6 +58,12 @@ fn main() -> Result<()> {
             let output = guts::commands::log::run(&args)?;
             println!("{}", output);
         }
+        Commands::LsFiles(args) => {
+            let output = guts::commands::ls_files::run(&args)?;
+            if !output.is_empty() {
+                println!("{}", output);
+            }
+        }
     }
 
     Ok(())
