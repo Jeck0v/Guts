@@ -16,7 +16,6 @@ pub struct App {
     pub input: String,
     pub cursor_position: usize,
     pub command_history: Vec<CommandResult>,
-    pub history_index: usize,
     pub input_history: Vec<String>,
     pub input_history_index: usize,
     pub should_quit: bool,
@@ -34,7 +33,6 @@ impl Default for App {
             input: String::new(),
             cursor_position: 0,
             command_history: Vec::new(),
-            history_index: 0,
             input_history: Vec::new(),
             input_history_index: 0,
             should_quit: false,
@@ -142,6 +140,7 @@ impl App {
             "guts add",
             "guts status",
             "guts commit",
+            "guts log",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -487,6 +486,22 @@ impl App {
                         // Inject current TUI directory
                         commit_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::commit::run(&commit_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                    Commands::Log(mut log_args) => {
+                        // Inject current TUI directory
+                        log_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::log::run(&log_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,
