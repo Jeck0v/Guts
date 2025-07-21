@@ -2,7 +2,6 @@ use anyhow::Result;
 use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use guts::cli::{Cli, Commands};
-use guts::commands::rev_parse;
 use std::fs;
 use std::process::{Command, Stdio};
 
@@ -142,6 +141,7 @@ impl App {
             "guts status",
             "guts commit",
             "guts log",
+            "guts show-ref",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -498,25 +498,41 @@ impl App {
                                 error: Some(e.to_string()),
                             }),
                         }
-                    },
+                    }
                     Commands::RevParse(rev_parse_args) => {
                         match guts::commands::rev_parse::run(&rev_parse_args) {
-                            Ok(out) => Ok(CommandResult { 
-                                command: command.to_string(), 
-                                output: out, 
-                                error: None 
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
                             }),
-                            Err(e) => Ok(CommandResult { 
-                                command: command.to_string(), 
-                                output: String::new(), 
-                                error: Some(e.to_string()), 
-                            })
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
                         }
                     }
                     Commands::Log(mut log_args) => {
                         // Inject current TUI directory
                         log_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::log::run(&log_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                    Commands::ShowRef(mut show_ref_args) => {
+                        // Inject current TUI directory
+                        show_ref_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::show_ref::run(&show_ref_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,

@@ -1,25 +1,19 @@
 use anyhow::Result;
 use clap::Args;
 use std::collections::HashSet;
-use std::path::PathBuf;
 
 use crate::core::status_binary_index;
 
 /// CLI arguments for the `status` command.
 #[derive(Args)]
-pub struct StatusObject {
-    // Optional custom path to the .git directory (defaults to current/.git)
-    pub guts_dir: Option<PathBuf>,
-}
+pub struct StatusObject {}
 
 /// Entry point for the `gut status` command.
-pub fn run(args: &StatusObject) -> Result<String> {
-    // Determine the path to the .git directory (or .guts if used)
-    let guts_dir = args.guts_dir.clone().unwrap_or_else(|| {
-        std::env::current_dir()
-            .expect("failed to get the current directory")
-            .join(".git")
-    });
+pub fn run(_args: &StatusObject) -> Result<String> {
+    // Use the standard .git directory
+    let guts_dir = std::env::current_dir()
+        .expect("failed to get the current directory")
+        .join(".git");
 
     // Validate the path exists
     if !guts_dir.exists() {
@@ -38,7 +32,7 @@ pub fn run(args: &StatusObject) -> Result<String> {
     let index_entries = status_binary_index::parse_git_index(&guts_dir)?;
 
     // Compare the working directory files to the index to find modified/deleted files
-    let modified_files = status_binary_index::is_modified(&index_entries, &guts_dir)?;
+    let modified_files = status_binary_index::is_modified(&index_entries)?;
 
     // Create a set of working directory paths for fast lookup
     let work_files_set: HashSet<_> = work_files.iter().collect();

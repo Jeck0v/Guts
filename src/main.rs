@@ -62,6 +62,10 @@ fn main() -> Result<()> {
             let output = guts::commands::log::run(&args)?;
             println!("{}", output);
         }
+        Commands::ShowRef(args) => {
+            let output = guts::commands::show_ref::run(&args)?;
+            println!("{}", output);
+        }
     }
 
     Ok(())

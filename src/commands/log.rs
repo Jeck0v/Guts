@@ -8,8 +8,6 @@ use std::path::PathBuf;
 /// Arguments for the `guts log` command
 #[derive(Args)]
 pub struct LogArgs {
-    /// Optional: custom path to .git (default current/.git)
-    pub guts_dir: Option<PathBuf>,
     /// Current directory for the operation (injected by TUI)
     pub dir: Option<PathBuf>,
 }
@@ -29,10 +27,7 @@ pub fn run(args: &LogArgs) -> Result<String> {
     }
 
     // Use the standard .git directory
-    let git_dir = args
-        .guts_dir
-        .clone()
-        .unwrap_or_else(|| current_dir.join(".git"));
+    let git_dir = current_dir.join(".git");
 
     // Read HEAD to get current commit
     let head_path = git_dir.join("HEAD");
