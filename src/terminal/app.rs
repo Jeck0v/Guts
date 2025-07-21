@@ -141,6 +141,7 @@ impl App {
             "guts status",
             "guts commit",
             "guts log",
+            "guts ls-files",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
