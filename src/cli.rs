@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 use crate::commands::{
     add, cat_file, commit, commit_tree, hash_object, init, log, rev_parse, rm, show_ref, status,
-    write_tree,
+    write_tree,ls_tree,
 };
 
 #[derive(Parser)]
@@ -51,6 +51,9 @@ pub enum Commands {
 
     /// Log head
     Log(log::LogArgs),
+  
+    /// List the contents of a tree object
+    LsTree(ls_tree::LsTreeArgs),
 
     /// Show all refs and their hashes
     ShowRef(show_ref::ShowRefArgs),
