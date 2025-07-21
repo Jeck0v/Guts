@@ -153,6 +153,29 @@ fn test_basic_git_workflow() {
     assert_eq!(show_ref_hash, commit_hash.trim());
     println!("✅ Show-ref command works correctly");
 
+    // 13. Test rev-parse command
+    // Test rev-parse with HEAD
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("rev-parse").arg("HEAD");
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), commit_hash.trim());
+    
+    // Test rev-parse with branch name
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("rev-parse").arg("main");
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), commit_hash.trim());
+    
+    // Test rev-parse with full SHA
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("rev-parse").arg(commit_hash.trim());
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), commit_hash.trim());
+    println!("✅ Rev-parse command works correctly");
+
     println!("🎉 Basic workflow test passed successfully!");
 }
 

@@ -2,7 +2,6 @@ use anyhow::Result;
 use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use guts::cli::{Cli, Commands};
-use guts::commands::rev_parse;
 use std::fs;
 use std::process::{Command, Stdio};
 
@@ -499,19 +498,19 @@ impl App {
                                 error: Some(e.to_string()),
                             }),
                         }
-                    },
+                    }
                     Commands::RevParse(rev_parse_args) => {
                         match guts::commands::rev_parse::run(&rev_parse_args) {
-                            Ok(out) => Ok(CommandResult { 
-                                command: command.to_string(), 
-                                output: out, 
-                                error: None 
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
                             }),
-                            Err(e) => Ok(CommandResult { 
-                                command: command.to_string(), 
-                                output: String::new(), 
-                                error: Some(e.to_string()), 
-                            })
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
                         }
                     }
                     Commands::Log(mut log_args) => {
