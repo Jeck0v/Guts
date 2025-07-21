@@ -1,94 +1,93 @@
-// Module pour un index Git simple en format JSON
-// Alternative pédagogique à l'index binaire Git complexe
+// Module for a simple Git index in JSON format
+// Educational alternative to Git's complex binary index
 
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::collections::HashMap;
+use crate::core::{blob, cat, hash};
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use crate::core::{blob, hash};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-/// Structure simple pour l'index Git
-/// Stocke uniquement les fichiers "stagés" avec leur hash SHA-1
+/// Simple structure for Git index
+/// Stores only "staged" files with their SHA-1 hash
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct SimpleIndex {
-    /// Map : chemin relatif du fichier -> hash SHA-1 du contenu
+    /// Map: relative file path -> SHA-1 hash of content
     pub files: HashMap<String, String>,
 }
 
 impl SimpleIndex {
-    /// Charge l'index depuis .git/simple_index.json
-    /// Si le fichier n'existe pas, retourne un index vide
+    /// Load index from .git/simple_index.json
+    /// If file doesn't exist, return empty index
     pub fn load() -> Result<Self> {
         let index_path = get_simple_index_path()?;
-        
+
         if !index_path.exists() {
             return Ok(SimpleIndex::default());
         }
 
         let content = fs::read_to_string(&index_path)
-            .with_context(|| format!("impossible de lire {:?}", index_path))?;
-        
-        let index: SimpleIndex = serde_json::from_str(&content)
-            .with_context(|| "JSON invalide dans l'index")?;
-        
+            .with_context(|| format!("unable to read {:?}", index_path))?;
+
+        let index: SimpleIndex =
+            serde_json::from_str(&content).with_context(|| "invalid JSON in index")?;
+
         Ok(index)
     }
 
-    /// Sauvegarde l'index dans .git/simple_index.json
+    /// Save index to .git/simple_index.json
     pub fn save(&self) -> Result<()> {
         let index_path = get_simple_index_path()?;
-        
-        let content = serde_json::to_string_pretty(self)
-            .with_context(|| "impossible de sérialiser l'index")?;
-        
+
+        let content =
+            serde_json::to_string_pretty(self).with_context(|| "unable to serialize index")?;
+
         fs::write(&index_path, content)
-            .with_context(|| format!("impossible d'écrire {:?}", index_path))?;
-        
+            .with_context(|| format!("unable to write {:?}", index_path))?;
+
         Ok(())
     }
 
-    /// Ajoute un fichier à l'index (= le "stage" pour le prochain commit)
+    /// Add a file to the index (= "stage" it for next commit)
     pub fn add_file(&mut self, file_path: &Path) -> Result<()> {
-        // Convertir en chemin absolu si nécessaire
+        // Convert to absolute path if necessary
         let absolute_path = if file_path.is_absolute() {
             file_path.to_path_buf()
         } else {
             std::env::current_dir()?.join(file_path)
         };
 
-        // Lire le contenu du fichier
+        // Read file content
         let content = fs::read(&absolute_path)
-            .with_context(|| format!("impossible de lire {:?}", absolute_path))?;
+            .with_context(|| format!("unable to read {:?}", absolute_path))?;
 
-        // Créer un blob Git et calculer son hash SHA-1
+        // Create Git blob and calculate its SHA-1 hash
         let blob = blob::Blob::new(content);
         let file_hash = hash::write_object(&blob)?;
 
-        // Convertir en chemin relatif depuis la racine du repo
+        // Convert to relative path from repo root
         let relative_path = get_relative_path(&absolute_path)?;
 
-        // Ajouter à notre map
+        // Add to our map
         self.files.insert(relative_path, file_hash);
-        
+
         Ok(())
     }
 
-    /// Vérifie si un fichier est dans l'index (stagé)
+    /// Check if a file is in the index (staged)
     pub fn contains_file(&self, file_path: &str) -> bool {
         self.files.contains_key(file_path)
     }
 
-    /// Retourne la liste des fichiers stagés
+    /// Return list of staged files
     pub fn get_staged_files(&self) -> Vec<&String> {
         self.files.keys().collect()
     }
 }
 
-/// Trouve la racine du repository Git (dossier qui contient .git/)
-fn find_repo_root() -> Result<PathBuf> {
-    let mut current = std::env::current_dir()
-        .with_context(|| "impossible d'obtenir le répertoire courant")?;
+/// Find Git repository root (directory containing .git/)
+pub fn find_repo_root() -> Result<PathBuf> {
+    let mut current = std::env::current_dir().with_context(|| "unable to get current directory")?;
 
     loop {
         let git_dir = current.join(".git");
@@ -98,26 +97,27 @@ fn find_repo_root() -> Result<PathBuf> {
 
         match current.parent() {
             Some(parent) => current = parent.to_path_buf(),
-            None => return Err(anyhow!("pas un repository git")),
+            None => return Err(anyhow!("not a git repository")),
         }
     }
 }
 
-/// Retourne le chemin vers .git/simple_index.json
+/// Return path to .git/simple_index.json
 fn get_simple_index_path() -> Result<PathBuf> {
     let repo_root = find_repo_root()?;
     Ok(repo_root.join(".git").join("simple_index.json"))
 }
 
-/// Convertit un chemin absolu en chemin relatif depuis la racine du repo
+/// Convert absolute path to relative path from repo root
 fn get_relative_path(file_path: &Path) -> Result<String> {
     let repo_root = find_repo_root()?;
-    let relative = file_path.strip_prefix(&repo_root)
-        .with_context(|| "le fichier n'est pas dans le repository")?;
+    let relative = file_path
+        .strip_prefix(&repo_root)
+        .with_context(|| "file is not in the repository")?;
     Ok(relative.to_string_lossy().to_string())
 }
 
-/// Vérifie si on est dans un repository Git
+/// Check if we're in a Git repository
 pub fn is_git_repository() -> Result<bool> {
     match find_repo_root() {
         Ok(_) => Ok(true),
@@ -125,11 +125,119 @@ pub fn is_git_repository() -> Result<bool> {
     }
 }
 
-/// Fonction publique pour ajouter un fichier à l'index
-/// C'est cette fonction que va appeler la commande `guts add`
+/// Public function to add a file to the index
+/// This is the function that the `guts add` command will call
 pub fn add_file_to_index(file_path: &Path) -> Result<()> {
     let mut index = SimpleIndex::load()?;
     index.add_file(file_path)?;
     index.save()?;
     Ok(())
+}
+
+/// Get the files committed in the current HEAD
+/// Returns a HashMap: relative file path -> SHA-1 hash
+pub fn get_committed_files() -> Result<HashMap<String, String>> {
+    let repo_root = find_repo_root()?;
+    let git_dir = repo_root.join(".git");
+    
+    // Read HEAD to get current commit
+    let head_path = git_dir.join("HEAD");
+    if !head_path.exists() {
+        // No commits yet
+        return Ok(HashMap::new());
+    }
+    
+    let head_content = fs::read_to_string(&head_path)?;
+    let head_content = head_content.trim();
+    
+    // Get the commit hash
+    let commit_hash = if head_content.starts_with("ref: ") {
+        // HEAD points to a branch
+        let ref_path = head_content.strip_prefix("ref: ").unwrap();
+        let ref_file = git_dir.join(ref_path);
+        
+        if !ref_file.exists() {
+            // Branch exists but no commits yet
+            return Ok(HashMap::new());
+        }
+        
+        fs::read_to_string(ref_file)?.trim().to_string()
+    } else {
+        // Detached HEAD, direct commit hash
+        head_content.to_string()
+    };
+    
+    // Read the commit object to get the tree hash
+    let commit_obj_path = cat::get_object_path(&git_dir, &commit_hash);
+    if !commit_obj_path.exists() {
+        return Ok(HashMap::new());
+    }
+    
+    let commit_data = fs::read(&commit_obj_path)?;
+    let decompressed = decompress_object(&commit_data)?;
+    let parsed = cat::parse_object(&decompressed)?;
+    
+    let tree_hash = match parsed {
+        cat::ParsedObject::Commit(commit) => commit.tree,
+        _ => return Err(anyhow!("HEAD does not point to a commit object")),
+    };
+    
+    // Read the tree object to get the files
+    get_files_from_tree(&git_dir, &tree_hash, "")
+}
+
+/// Recursively get all files from a tree object
+/// Returns a HashMap: relative file path -> SHA-1 hash
+fn get_files_from_tree(git_dir: &Path, tree_hash: &str, prefix: &str) -> Result<HashMap<String, String>> {
+    let mut files = HashMap::new();
+    
+    let tree_obj_path = cat::get_object_path(git_dir, tree_hash);
+    if !tree_obj_path.exists() {
+        return Ok(files);
+    }
+    
+    let tree_data = fs::read(&tree_obj_path)?;
+    let decompressed = decompress_object(&tree_data)?;
+    let parsed = cat::parse_object(&decompressed)?;
+    
+    let entries = match parsed {
+        cat::ParsedObject::Tree(entries) => entries,
+        _ => return Err(anyhow!("Object is not a tree")),
+    };
+    
+    for entry in entries {
+        let file_path = if prefix.is_empty() {
+            entry.name.clone()
+        } else {
+            format!("{}/{}", prefix, entry.name)
+        };
+        
+        // For simplicity, we only handle regular files (mode 100644)
+        // In a full implementation, we would recursively handle subdirectories
+        if entry.mode == "100644" {
+            let hash_hex = hex::encode(entry.hash);
+            files.insert(file_path, hash_hex);
+        }
+    }
+    
+    Ok(files)
+}
+
+/// Decompress Git object data (Git uses zlib compression)
+/// But our simple implementation stores objects uncompressed, so try both
+fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
+    // First try to decompress as zlib (standard Git format)
+    use std::io::Read;
+    
+    let mut decoder = flate2::read::ZlibDecoder::new(data);
+    let mut decompressed = Vec::new();
+    
+    match decoder.read_to_end(&mut decompressed) {
+        Ok(_) => Ok(decompressed),
+        Err(_) => {
+            // If decompression fails, assume data is already uncompressed
+            // (our simple implementation stores objects uncompressed)
+            Ok(data.to_vec())
+        }
+    }
 }

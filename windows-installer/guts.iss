@@ -63,4 +63,3 @@ begin
     'Thanks for using Guts!' + #13#10 +
     'Feel free to report issues or ideas in the GitHub discussions.';
 end;
-

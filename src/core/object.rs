@@ -18,8 +18,8 @@ pub trait GitObject {
     /// followed by a null byte (`\0`), then the actual content bytes.
     fn serialize(&self) -> Vec<u8> {
         let header = format!("{} {}\0", self.object_type(), self.content().len());
-        let mut full = header.into_bytes();        // Convert header string to bytes
-        full.extend_from_slice(&self.content());   // Append the content bytes after the header
+        let mut full = header.into_bytes(); // Convert header string to bytes
+        full.extend_from_slice(&self.content()); // Append the content bytes after the header
         full
     }
 }
@@ -27,15 +27,15 @@ pub trait GitObject {
 /// Represents a single entry in a Git tree object.
 /// Each entry corresponds to a file or a directory in the tree.
 pub struct TreeEntry {
-    pub mode: String,         // File mode as a string, e.g. "100644" for normal files
-    pub name: String,         // File or directory name
-    pub hash: [u8; 20],       // SHA-1 hash of the object the entry points to (20 bytes)
+    pub mode: String,   // File mode as a string, e.g. "100644" for normal files
+    pub name: String,   // File or directory name
+    pub hash: [u8; 20], // SHA-1 hash of the object the entry points to (20 bytes)
 }
 
 /// Represents a Git tree object, which contains multiple tree entries.
 /// This corresponds to a directory in Git's internal structure.
 pub struct Tree {
-    pub entries: Vec<TreeEntry>,  // List of entries (files or subdirectories)
+    pub entries: Vec<TreeEntry>, // List of entries (files or subdirectories)
 }
 
 impl GitObject for Tree {
@@ -43,9 +43,9 @@ impl GitObject for Tree {
     fn serialize(&self) -> Vec<u8> {
         let content = self.content(); // Get the raw content bytes for the tree entries
 
-        let header = format!("tree {}\0", content.len());  // Create tree header with content length
-        let mut out = header.into_bytes();                  // Convert header to bytes
-        out.extend(content);                                // Append the tree entries content
+        let header = format!("tree {}\0", content.len()); // Create tree header with content length
+        let mut out = header.into_bytes(); // Convert header to bytes
+        out.extend(content); // Append the tree entries content
         out
     }
 
@@ -75,7 +75,6 @@ impl GitObject for Tree {
     }
 }
 
-
 pub struct Commit {
     pub tree: String,
     pub parent: Option<String>,
@@ -99,8 +98,14 @@ impl GitObject for Commit {
         let timestamp = Utc::now().timestamp();
         let timezone = "+0000";
 
-        let author_line = format!("author guts <guts@example.com> {} {}\n", timestamp, timezone);
-        let committer_line = format!("committer guts <guts@example.com> {} {}\n", timestamp, timezone);
+        let author_line = format!(
+            "author guts <guts@example.com> {} {}\n",
+            timestamp, timezone
+        );
+        let committer_line = format!(
+            "committer guts <guts@example.com> {} {}\n",
+            timestamp, timezone
+        );
 
         content.extend(author_line.as_bytes());
         content.extend(committer_line.as_bytes());

@@ -17,7 +17,6 @@ fn main() -> Result<()> {
 
     // refactored for TUI output
     match cli.command {
-        
         Commands::Init(args) => {
             let output = guts::commands::init::run(&args)?;
             println!("{}", output);
@@ -45,6 +44,14 @@ fn main() -> Result<()> {
         }
         Commands::Add(args) => {
             let output = guts::commands::add::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::Rm(args) => {
+            let output = guts::commands::rm::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::Commit(args) => {
+            let output = guts::commands::commit::run(&args)?;
             println!("{}", output);
         }
     }

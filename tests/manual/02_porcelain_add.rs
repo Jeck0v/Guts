@@ -15,13 +15,11 @@ fn test_add_single_file() {
 
     // Tester la commande `guts add hello.txt`
     let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("add")
-        .arg("hello.txt");
+    cmd.current_dir(temp.path()).arg("add").arg("hello.txt");
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Ajouté : hello.txt"));
+        .stdout(predicate::str::contains("Added: hello.txt"));
 
     // Vérifier que l'index JSON a été créé
     let index_path = temp.path().join(".git/simple_index.json");
@@ -54,7 +52,7 @@ fn test_add_multiple_files() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Ajoutés 2 fichiers"));
+        .stdout(predicate::str::contains("Added 2 files"));
 
     // Vérifier l'index
     let index_path = temp.path().join(".git/simple_index.json");
@@ -75,15 +73,12 @@ fn test_add_workflow_with_status_and_write_tree() {
 
     // 1. Add file
     let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("add")
-        .arg("test.txt");
+    cmd.current_dir(temp.path()).arg("add").arg("test.txt");
     cmd.assert().success();
 
     // 2. Status should show file as staged
     let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("status");
+    cmd.current_dir(temp.path()).arg("status");
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("Changes to be committed"))
@@ -91,21 +86,18 @@ fn test_add_workflow_with_status_and_write_tree() {
 
     // 3. Write-tree should create a tree with the file
     let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("write-tree");
-    
+    cmd.current_dir(temp.path()).arg("write-tree");
+
     let output = cmd.output().unwrap();
     assert!(output.status.success());
-    
+
     let tree_hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
     assert_eq!(tree_hash.len(), 40); // SHA-1 hash length
 
     // 4. Cat-file should show the tree contains our file
     let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("cat-file")
-        .arg(&tree_hash);
-    
+    cmd.current_dir(temp.path()).arg("cat-file").arg(&tree_hash);
+
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("test.txt"))
@@ -136,9 +128,7 @@ fn test_add_error_not_git_repo() {
     file.write_str("content").unwrap();
 
     let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("add")
-        .arg("test.txt");
+    cmd.current_dir(temp.path()).arg("add").arg("test.txt");
 
     cmd.assert()
         .failure()

@@ -1,7 +1,7 @@
-use std::{path::{Path, PathBuf}};
-use anyhow::{anyhow, Result};
-use crate::core::object::TreeEntry;
 use crate::core::object::Commit;
+use crate::core::object::TreeEntry;
+use anyhow::{anyhow, Result};
+use std::path::{Path, PathBuf};
 
 /// Enum representing different parsed Git object types.
 /// - Blob holds raw file content bytes.
@@ -12,15 +12,15 @@ pub enum ParsedObject {
     Blob(Vec<u8>),
     Tree(Vec<TreeEntry>),
     Commit(Commit),
-    Other(String, Vec<u8>)
+    Other(String, Vec<u8>),
 }
 
-/// Given the root `.guts` directory and a SHA-1 hash string,
+/// Given the root `.git` directory and a SHA-1 hash string,
 /// constructs and returns the path to the object file.
 ///
 /// Git stores objects in subdirectories named by the first two
 /// characters of their SHA, with the remainder as the filename:
-/// `.guts/objects/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY`
+/// `.git/objects/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY`
 pub fn get_object_path(guts_dir: &Path, sha: &str) -> PathBuf {
     let (dir, file) = sha.split_at(2);
     guts_dir.join("objects").join(dir).join(file)
@@ -41,7 +41,8 @@ pub fn get_object_path(guts_dir: &Path, sha: &str) -> PathBuf {
 ///     - others: return type and raw bytes unchanged
 pub fn parse_object(data: &[u8]) -> Result<ParsedObject> {
     // Find the position of the null byte separating header from body
-    let null_pos = data.iter()
+    let null_pos = data
+        .iter()
         .position(|&b| b == 0)
         .ok_or_else(|| anyhow!("invalid object format : missing null separator"))?;
 
@@ -52,8 +53,12 @@ pub fn parse_object(data: &[u8]) -> Result<ParsedObject> {
 
     // Header format: "<type> <size>"
     let mut parts = header.split(' ');
-    let obj_type = parts.next().ok_or_else(|| anyhow!("Invalid header format"))?;
-    let size_str = parts.next().ok_or_else(|| anyhow!("Invalid header format"))?;
+    let obj_type = parts
+        .next()
+        .ok_or_else(|| anyhow!("Invalid header format"))?;
+    let size_str = parts
+        .next()
+        .ok_or_else(|| anyhow!("Invalid header format"))?;
     let _size: usize = size_str.parse()?; // Size parsed but not strictly enforced here
 
     // Dispatch parsing based on object type
@@ -92,7 +97,8 @@ pub fn parse_tree_body(data: &[u8]) -> Result<Vec<TreeEntry>> {
 
     while i < data.len() {
         // Parse mode string (e.g. "100644") up to the space character
-        let mode_end = data[i..].iter()
+        let mode_end = data[i..]
+            .iter()
             .position(|&b| b == b' ')
             .ok_or_else(|| anyhow!("invalid tree entry: missing space after mode"))?;
         let mode = std::str::from_utf8(&data[i..i + mode_end])?.to_string();
@@ -100,7 +106,8 @@ pub fn parse_tree_body(data: &[u8]) -> Result<Vec<TreeEntry>> {
         i += mode_end + 1; // Advance past mode and space
 
         // Parse filename string up to the null byte
-        let name_end = data[i..].iter()
+        let name_end = data[i..]
+            .iter()
             .position(|&b| b == 0)
             .ok_or_else(|| anyhow!("invalid tree entry: missing null byte after filename"))?;
         let name = std::str::from_utf8(&data[i..i + name_end])?.to_string();

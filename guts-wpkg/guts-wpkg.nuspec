@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>guts-wpkg</id>
@@ -6,7 +6,8 @@
     <title>Guts - Git in Rust</title>
     <authors>UNFAIR TEAM</authors>
     <owners>UNFAIR TEAM</owners>
-    <description>Guts is an educational implementation of Git written in Rust. It provides a better understanding of the inner workings of Git, while remaining lightweight, fast and easy to use.</description>
+    <description
+        >Guts is an educational implementation of Git written in Rust. It provides a better understanding of the inner workings of Git, while remaining lightweight, fast and easy to use.</description>
     <summary>Git from scratch in Rust — educational and efficient.</summary>
     <projectUrl>https://github.com/Jeck0v/Guts</projectUrl>
     <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>

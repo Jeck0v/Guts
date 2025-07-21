@@ -3,7 +3,10 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{
+        Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
+        Wrap,
+    },
     Frame,
 };
 
@@ -64,9 +67,9 @@ fn render_cli_interface(f: &mut Frame, area: Rect, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // Banner
-            Constraint::Min(0),     // Command history
-            Constraint::Length(3),  // Input area
+            Constraint::Length(3), // Banner
+            Constraint::Min(0),    // Command history
+            Constraint::Length(3), // Input area
         ])
         .split(area);
 
@@ -83,7 +86,11 @@ fn render_cli_interface(f: &mut Frame, area: Rect, app: &mut App) {
 fn render_banner(f: &mut Frame, area: Rect) {
     let banner = Paragraph::new("Team UNFAIR")
         .block(Block::default().borders(Borders::ALL))
-        .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
         .alignment(Alignment::Center);
 
     f.render_widget(banner, area);
@@ -95,49 +102,49 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
     // add welcome message if history is empty
     if app.command_history.is_empty() {
         items.push(ListItem::new(vec![
-            Line::from(vec![
-                Span::styled("Welcome to GUTS Terminal!", Style::default().fg(Color::LightGreen)),
-            ]),
-            Line::from(vec![
-                Span::styled("Team UNFAIR: Jecko, Max, Kae, Algont", Style::default().fg(Color::LightGreen)),
-            ]),
-            Line::from(vec![
-                Span::styled("Type 'guts' commands or regular shell commands.", Style::default().fg(Color::Gray)),
-            ]),
-            Line::from(vec![
-                Span::styled("Press Ctrl+C to quit. Use Ctrl+↑/↓ to scroll.", Style::default().fg(Color::Gray)),
-            ]),
+            Line::from(vec![Span::styled(
+                "Welcome to GUTS Terminal!",
+                Style::default().fg(Color::LightGreen),
+            )]),
+            Line::from(vec![Span::styled(
+                "Team UNFAIR: Jecko, Max, Kae, Algont",
+                Style::default().fg(Color::LightGreen),
+            )]),
+            Line::from(vec![Span::styled(
+                "Type 'guts' commands or regular shell commands.",
+                Style::default().fg(Color::Gray),
+            )]),
+            Line::from(vec![Span::styled(
+                "Press Ctrl+C to quit. Use Ctrl+↑/↓ to scroll.",
+                Style::default().fg(Color::Gray),
+            )]),
         ]));
     }
 
     // add command history
     for result in &app.command_history {
-        items.push(ListItem::new(vec![
-            Line::from(vec![
-                Span::styled("$ ", Style::default().fg(Color::Green)),
-                Span::styled(&result.command, Style::default().fg(Color::White)),
-            ]),
-        ]));
+        items.push(ListItem::new(vec![Line::from(vec![
+            Span::styled("$ ", Style::default().fg(Color::Green)),
+            Span::styled(&result.command, Style::default().fg(Color::White)),
+        ])]));
 
         // output gestion
         if !result.output.is_empty() {
             for line in result.output.lines() {
-                items.push(ListItem::new(vec![
-                    Line::from(vec![
-                        Span::styled(line, Style::default().fg(Color::LightBlue)),
-                    ]),
-                ]));
+                items.push(ListItem::new(vec![Line::from(vec![Span::styled(
+                    line,
+                    Style::default().fg(Color::LightBlue),
+                )])]));
             }
         }
 
         // error catch
         if let Some(error) = &result.error {
             for line in error.lines() {
-                items.push(ListItem::new(vec![
-                    Line::from(vec![
-                        Span::styled(line, Style::default().fg(Color::LightRed)),
-                    ]),
-                ]));
+                items.push(ListItem::new(vec![Line::from(vec![Span::styled(
+                    line,
+                    Style::default().fg(Color::LightRed),
+                )])]));
             }
         }
 
@@ -173,8 +180,7 @@ fn render_command_history_with_scroll(f: &mut Frame, area: Rect, app: &App) {
             .thumb_style(Style::default().fg(Color::White)) // cursor color
             .track_style(Style::default().fg(Color::DarkGray));
 
-        let mut scrollbar_state = ScrollbarState::new(total_lines)
-            .position(app.scroll_offset);
+        let mut scrollbar_state = ScrollbarState::new(total_lines).position(app.scroll_offset);
 
         f.render_stateful_widget(
             scrollbar,

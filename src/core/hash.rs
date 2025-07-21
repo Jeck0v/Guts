@@ -6,7 +6,7 @@ use sha1::{Digest, Sha1};
 
 use crate::core::object::GitObject;
 
-/// Calculates the SHA-1 and writes the object to .guts/objects/<prefix>/<hash>
+/// Calculates the SHA-1 and writes the object to .git/objects/<prefix>/<hash>
 pub fn write_object(obj: &impl GitObject) -> Result<String> {
     let serialized = obj.serialize();
 
@@ -16,7 +16,7 @@ pub fn write_object(obj: &impl GitObject) -> Result<String> {
     let hex = hex::encode(&hash);
 
     let (dir_name, file_name) = hex.split_at(2);
-    let path = PathBuf::from(".guts/objects").join(dir_name).join(file_name);
+    let path = PathBuf::from(".git/objects").join(dir_name).join(file_name);
 
     if path.exists() {
         return Ok(hex);

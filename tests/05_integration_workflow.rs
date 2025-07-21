@@ -1,0 +1,153 @@
+use assert_cmd::Command;
+use assert_fs::prelude::*;
+use predicates::prelude::*;
+use std::fs;
+
+/// Basic workflow test that focuses on working functionality
+/// Tests: init → add → commit → modify → add → commit
+#[test]
+fn test_basic_git_workflow() {
+    // Create temporary directory
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+    println!("🗂️  Created test directory: {}", temp_dir.path().display());
+
+    // 1. Initialize repository
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("init");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Initialized empty Guts repository"));
+    println!("✅ Repository initialized");
+
+    // 2. Check initial status
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("No commits yet"))
+        .stdout(predicate::str::contains("nothing to commit, working tree clean"));
+    println!("✅ Initial status correct");
+
+    // 3. Create and add a file
+    let readme = temp_dir.child("README.md");
+    readme.write_str("# My Project\n\nThis is a test project.\n").unwrap();
+
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("README.md");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Added: README.md"));
+    println!("✅ File added successfully");
+
+    // 4. Check staged status
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Changes to be committed"))
+        .stdout(predicate::str::contains("new file:   README.md"));
+    println!("✅ File staged correctly");
+
+    // 5. Commit
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path())
+        .arg("commit")
+        .arg("-m")
+        .arg("Initial commit");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Initial commit"));
+    println!("✅ First commit successful");
+
+    // 6. Check clean status
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("nothing to commit, working tree clean"));
+    println!("✅ Working tree clean after commit");
+
+    // 7. Modify file
+    readme.write_str("# My Project\n\nThis is a test project.\n\n## Updated!\nAdded new content.\n").unwrap();
+
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Changes not staged for commit"))
+        .stdout(predicate::str::contains("modified:   README.md"));
+    println!("✅ File modification detected");
+
+    // 8. Stage modification and commit
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("README.md");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Added: README.md"));
+
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path())
+        .arg("commit")
+        .arg("-m")
+        .arg("Update README");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Update README"));
+    println!("✅ Second commit successful");
+
+    // 9. Final status check
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("nothing to commit, working tree clean"));
+    println!("✅ Final working tree clean");
+
+    // 10. Verify repository structure
+    assert!(temp_dir.path().join("README.md").exists());
+    assert!(temp_dir.path().join(".git/HEAD").exists());
+    assert!(temp_dir.path().join(".git/refs/heads/main").exists());
+
+    // Check we have valid commits
+    let commit_hash = fs::read_to_string(temp_dir.path().join(".git/refs/heads/main")).unwrap();
+    assert_eq!(commit_hash.trim().len(), 40);
+    println!("✅ Repository structure verified");
+
+    println!("🎉 Basic workflow test passed successfully!");
+}
+
+/// Test error conditions
+#[test]
+fn test_error_conditions() {
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+
+    // 1. Commands before init should fail appropriately
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("file.txt");
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("not a git repository"));
+
+    // 2. Init and try empty commit
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("init");
+    cmd.assert().success();
+
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path())
+        .arg("commit")
+        .arg("-m")
+        .arg("Empty");
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("nothing to commit"));
+
+    // 3. Add non-existent file
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("nonexistent.txt");
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("did not match any files"));
+
+    println!("✅ Error conditions handled correctly");
+}

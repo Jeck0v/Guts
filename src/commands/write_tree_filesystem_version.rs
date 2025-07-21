@@ -1,11 +1,13 @@
-use std::path::PathBuf;
+use crate::core::{build_tree, hash};
 use anyhow::Result;
 use clap::Args;
-use crate::core::{hash, build_tree};
+use std::path::PathBuf;
 
 #[derive(Args)]
 pub struct WriteTreeArgs {
     pub dir: Option<PathBuf>,
+    /// Current directory for the operation (injected by TUI)
+    pub tui_dir: Option<PathBuf>,
 }
 
 pub fn run(args: &WriteTreeArgs) -> Result<String> {

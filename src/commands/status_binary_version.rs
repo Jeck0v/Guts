@@ -1,7 +1,7 @@
+use anyhow::Result;
+use clap::Args;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use anyhow::{Result};
-use clap::Args;
 
 use crate::core::status_binary_index;
 
@@ -15,12 +15,11 @@ pub struct StatusObject {
 /// Entry point for the `gut status` command.
 pub fn run(args: &StatusObject) -> Result<String> {
     // Determine the path to the .git directory (or .guts if used)
-    let guts_dir = args
-        .guts_dir
-        .clone()
-        .unwrap_or_else(|| std::env::current_dir()
+    let guts_dir = args.guts_dir.clone().unwrap_or_else(|| {
+        std::env::current_dir()
             .expect("failed to get the current directory")
-            .join(".git"));
+            .join(".git")
+    });
 
     // Validate the path exists
     if !guts_dir.exists() {
@@ -32,7 +31,7 @@ pub fn run(args: &StatusObject) -> Result<String> {
 
     // Get all files in the working directory (excluding .git/.guts)
     let work_files = status_binary_index::list_working_dir_files(
-        &std::env::current_dir().expect("failed to get the current directory")
+        &std::env::current_dir().expect("failed to get the current directory"),
     )?;
 
     // Parse the .git/index to get the list of tracked files
@@ -61,7 +60,6 @@ pub fn run(args: &StatusObject) -> Result<String> {
     //     output.push_str("\n");
     // }
 
-    
     // Show files that have been modified since last index
     if !modified_files.is_empty() {
         output.push_str("Changes not staged for commit:\n");

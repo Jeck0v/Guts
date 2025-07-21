@@ -19,7 +19,7 @@ fn test_init_creates_repository_structure() {
     assert!(git_dir.join("refs/heads").is_dir());
     assert_eq!(
         fs::read_to_string(git_dir.join("HEAD")).unwrap(),
-        "ref: refs/heads/master\n"
+        "ref: refs/heads/main\n"
     );
     assert!(git_dir.join("config").exists());
 }

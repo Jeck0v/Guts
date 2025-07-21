@@ -1,7 +1,6 @@
 use anyhow::Result;
 
-use guts::core::cat::{parse_object,parse_tree_body,ParsedObject};
-
+use guts::core::cat::{parse_object, parse_tree_body, ParsedObject};
 
 #[test]
 fn test_parse_tree_body_single_entry() -> Result<()> {
@@ -9,15 +8,15 @@ fn test_parse_tree_body_single_entry() -> Result<()> {
     // mode = "100644"
     // nom = "file.txt"
     // hash = 20 octets arbitraires (ici 0x01, 0x02, ..., 0x14)
-    
+
     let mut data = Vec::new();
-    data.extend(b"100644 ");           // mode + espace
-    data.extend(b"file.txt");          // nom
-    data.push(0);                      // null byte
-    data.extend((1u8..=20).collect::<Vec<u8>>());  // hash SHA1 fictif 20 octets
-    
+    data.extend(b"100644 "); // mode + espace
+    data.extend(b"file.txt"); // nom
+    data.push(0); // null byte
+    data.extend((1u8..=20).collect::<Vec<u8>>()); // hash SHA1 fictif 20 octets
+
     let entries = parse_tree_body(&data)?;
-    
+
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].mode, "100644");
     assert_eq!(entries[0].name, "file.txt");
@@ -28,7 +27,7 @@ fn test_parse_tree_body_single_entry() -> Result<()> {
         }
         h
     });
-    
+
     Ok(())
 }
 
@@ -40,14 +39,14 @@ fn test_parse_object_tree() -> Result<()> {
     body.extend(b"file.txt");
     body.push(0);
     body.extend((1u8..=20).collect::<Vec<u8>>());
-    
+
     let header = format!("tree {}\0", body.len());
     let mut data = header.into_bytes();
     data.extend(body);
-    
+
     // Parse the full object
     let parsed = parse_object(&data)?;
-    
+
     match parsed {
         ParsedObject::Tree(entries) => {
             assert_eq!(entries.len(), 1);
@@ -63,7 +62,7 @@ fn test_parse_object_tree() -> Result<()> {
         }
         _ => panic!("Expected ParsedObject::Tree"),
     }
-    
+
     Ok(())
 }
 
@@ -74,16 +73,15 @@ fn test_parse_object_blob() -> Result<()> {
     let header = format!("blob {}\0", content.len());
     let mut data = header.into_bytes();
     data.extend(content);
-    
+
     let parsed = parse_object(&data)?;
-    
+
     match parsed {
         ParsedObject::Blob(bytes) => {
             assert_eq!(bytes, b"Hello, world!");
         }
         _ => panic!("Expected ParsedObject::Blob"),
     }
-    
+
     Ok(())
 }
-

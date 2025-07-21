@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::{Path};
+use std::path::Path;
 
 use anyhow::{Context, Result};
 
@@ -20,7 +20,7 @@ pub fn init(path: &Path) -> Result<()> {
     fs::create_dir_all(&objects_dir).with_context(|| "failed to create objects directory")?;
     fs::create_dir_all(&refs_heads_dir).with_context(|| "failed to create refs/heads directory")?;
 
-    fs::write(&head_file, b"ref: refs/heads/master\n")
+    fs::write(&head_file, b"ref: refs/heads/main\n")
         .with_context(|| "failed to write HEAD file")?;
 
     fs::write(&config_file, b"[core]\n\trepositoryformatversion = 0\n")
