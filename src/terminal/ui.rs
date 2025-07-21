@@ -43,6 +43,7 @@ fn render_ascii_art(f: &mut Frame, area: Rect) {
     • guts status
     • guts commit -m "message"
     • guts ls-files
+    • guts ls-tree <tree_id>
     • ls, pwd, cd
     • clear, exit
 

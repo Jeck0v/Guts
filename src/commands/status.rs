@@ -8,8 +8,6 @@ use walkdir::WalkDir;
 /// CLI arguments for the `status` command.
 #[derive(Args)]
 pub struct StatusObject {
-    /// Optional: custom path to .git (default current/.git)
-    pub guts_dir: Option<PathBuf>,
     /// Current directory for the operation (injected by TUI)
     pub dir: Option<PathBuf>,
 }

@@ -57,7 +57,6 @@ fn run_commit(args: &CommitArgs) -> Result<String> {
         tree: tree_hash.clone(),
         parent,
         message: args.message.clone(),
-        git_dir: None,
         dir: None,
     };
     let commit_hash = commit_tree::run(&commit_tree_args)?;
