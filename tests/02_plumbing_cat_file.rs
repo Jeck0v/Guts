@@ -10,10 +10,6 @@ use guts::core::cat;
 pub struct CatFileArgs {
     /// SHA or partial SHA of the object to read
     pub sha: String,
-
-    /// Path to the `.git` directory (defaults to current directory + ".git")
-    #[arg(long, value_name = "DIR")]
-    pub git_dir: Option<PathBuf>,
 }
 
 pub fn run(args: &CatFileArgs) -> Result<()> {
@@ -23,14 +19,10 @@ pub fn run(args: &CatFileArgs) -> Result<()> {
         return Err(anyhow!("SHA is too small (need at least 4 characters)"));
     }
 
-    // Determine the git directory path
-    let git_dir = match &args.git_dir {
-        Some(dir) => dir.clone(),
-        None => {
-            let current_dir = env::current_dir().context("failed to get current directory")?;
-            current_dir.join(".git")
-        }
-    };
+    // Use the standard .git directory
+    let git_dir = env::current_dir()
+        .context("failed to get current directory")?
+        .join(".git");
 
     if !git_dir.exists() {
         return Err(anyhow!("no .git directory found at {}", git_dir.display()));

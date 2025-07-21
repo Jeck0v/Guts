@@ -141,6 +141,7 @@ impl App {
             "guts status",
             "guts commit",
             "guts log",
+            "guts show-ref",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -502,6 +503,22 @@ impl App {
                         // Inject current TUI directory
                         log_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::log::run(&log_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                    Commands::ShowRef(mut show_ref_args) => {
+                        // Inject current TUI directory
+                        show_ref_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::show_ref::run(&show_ref_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,
