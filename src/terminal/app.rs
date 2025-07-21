@@ -136,6 +136,7 @@ impl App {
             "guts cat-file",
             "guts write-tree",
             "guts commit-tree",
+            "guts ls-tree",
             "guts rm",
             "guts add",
             "guts status",
@@ -502,6 +503,22 @@ impl App {
                         // Inject current TUI directory
                         log_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::log::run(&log_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                    Commands::LsTree(mut ls_tree_args) => {
+                        // Inject current TUI directory
+                        ls_tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::ls_tree::run(&ls_tree_args) {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,

@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    add, cat_file, commit, commit_tree, hash_object, init, log, rm, status, write_tree,
+    add, cat_file, commit, commit_tree, hash_object, init, log, ls_tree, rm, status, write_tree,
 };
 
 #[derive(Parser)]
@@ -47,6 +47,9 @@ pub enum Commands {
 
     /// Log head
     Log(log::LogArgs),
+
+    /// List the contents of a tree object
+    LsTree(ls_tree::LsTreeArgs),
 
     /// Launch graphical terminal UI
     Tui,

@@ -58,6 +58,10 @@ fn main() -> Result<()> {
             let output = guts::commands::log::run(&args)?;
             println!("{}", output);
         }
+        Commands::LsTree(args) => {
+            let output = guts::commands::ls_tree::run(&args)?;
+            println!("{}", output);
+        }
     }
 
     Ok(())

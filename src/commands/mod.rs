@@ -5,6 +5,7 @@ pub mod commit_tree;
 pub mod hash_object;
 pub mod init;
 pub mod log;
+pub mod ls_tree;
 pub mod rm;
 pub mod status; // Version JSON (nouvelle)
 pub mod status_binary_version; // Version binaire (préservée)
