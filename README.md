@@ -13,14 +13,14 @@ https://github.com/Jeck0v/Guts/wiki/Installation-with-package-manager
 You will implement a subset of Git commands, both low-level (plumbing) and user-facing (porcelain). Your goal is to ensure they behave similarly to real Git, within clearly defined constraints.
 
 ## How to use the TUI app:
-You need to:
+You need to enter:
 ``` bash
-cargo build
+guts
 ```
-and then:
-``` bash
-cargo run -- tui
-```
+## TUI installation for windows:
+Go to `windows-installer` and just take the file `Guts_Installer.exe` and execute it. <br>
+You now have a shortcut + the application in the PATH.
+> The installer was made using Inno Setup Script (ISS) and PowerShell. For the sake of transparency, we've left the ISS file freely accessible, so you can read it and better understand what you're running. If you wish to modify the executable, you'll need to copy and add your own values to the config.iss file (which serves as the .env file for ISS)
 ---
 
 ## 🛠 Plumbing Commands
@@ -51,18 +51,18 @@ cargo run -- tui
 - Initializes a Git repository in the given directory.
 - Create .git/objects, .git/refs/heads, HEAD, and minimal config
 
-### `git add <file>…`
+### `git add <file>…`  :white_check_mark:
 - Adds files to the staging area (not directories).
 - ❌ No `-p`, no wildcards.
 
-### `git rm <file>…`
+### `git rm <file>…`  :white_check_mark:
 - Removes a file from working directory and index.
 
-### `git commit -m "msg"`
+### `git commit -m "msg"`  :white_check_mark:
 - Runs `write-tree`, creates a commit with HEAD as parent.
 - ❌ No editor or message prompt.
 
-### `git status`
+### `git status`  :white_check_mark:
 - Shows staged and unstaged changes.
 
 ### `git checkout [-b] <branch|sha>`

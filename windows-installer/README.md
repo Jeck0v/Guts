@@ -28,3 +28,15 @@ This script builds the Windows installer for Guts using Inno Setup:
 
 For more details, visit the project GitHub:
 https://github.com/Jeck0v/Guts
+
+If any problem:
+```
+cargo clean
+```
+```
+cargo build
+```
+```
+cargo build --release
+```
+And recompile with ISS for the executable

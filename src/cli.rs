@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::commands::{add, cat_file, commit, commit_tree, hash_object, init, rm, status, write_tree, rev_parse};
+use crate::commands::{add, cat_file, commit, commit_tree, hash_object, init, rm, status, write_tree, rev_parse, log};
 
 #[derive(Parser)]
 #[command(
@@ -45,6 +45,9 @@ pub enum Commands {
 
     /// Convert ref/branch/HEAD into SHA-1.
     RevParse(rev_parse::RevParse),
+
+    /// Log head
+    Log(log::LogArgs),
 
     /// Launch graphical terminal UI
     Tui,
