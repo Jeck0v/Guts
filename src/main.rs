@@ -54,6 +54,10 @@ fn main() -> Result<()> {
             let output = guts::commands::commit::run(&args)?;
             println!("{}", output);
         }
+        Commands::Log(args) => {
+            let output = guts::commands::log::run(&args)?;
+            println!("{}", output);
+        }
     }
 
     Ok(())

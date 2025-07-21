@@ -95,7 +95,27 @@ fn test_basic_git_workflow() {
         .stdout(predicate::str::contains("Update README"));
     println!("✅ Second commit successful");
 
-    // 9. Final status check
+    // 9. Test log command shows both commits
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("log");
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    // Verify both commits are present in log
+    assert!(stdout.contains("Update README"));
+    assert!(stdout.contains("Initial commit"));
+    
+    // Verify order: Update README should appear before Initial commit
+    let update_pos = stdout.find("Update README").unwrap();
+    let initial_pos = stdout.find("Initial commit").unwrap();
+    assert!(update_pos < initial_pos, "Update README should appear before Initial commit in log output");
+    
+    // Verify SHA format for both commits
+    assert!(predicate::str::is_match(r"[a-f0-9]{40} Update README").unwrap().eval(&stdout));
+    assert!(predicate::str::is_match(r"[a-f0-9]{40} Initial commit").unwrap().eval(&stdout));
+    println!("✅ Log command shows commit history correctly");
+
+    // 10. Final status check
     let mut cmd = Command::cargo_bin("guts").unwrap();
     cmd.current_dir(temp_dir.path()).arg("status");
     cmd.assert()
@@ -103,7 +123,7 @@ fn test_basic_git_workflow() {
         .stdout(predicate::str::contains("nothing to commit, working tree clean"));
     println!("✅ Final working tree clean");
 
-    // 10. Verify repository structure
+    // 11. Verify repository structure
     assert!(temp_dir.path().join("README.md").exists());
     assert!(temp_dir.path().join(".git/HEAD").exists());
     assert!(temp_dir.path().join(".git/refs/heads/main").exists());
@@ -128,10 +148,23 @@ fn test_error_conditions() {
         .failure()
         .stderr(predicate::str::contains("not a git repository"));
 
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("log");
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("fatal: not a git repository"));
+
     // 2. Init and try empty commit
     let mut cmd = Command::cargo_bin("guts").unwrap();
     cmd.current_dir(temp_dir.path()).arg("init");
     cmd.assert().success();
+
+    // 2a. Log command should fail when no commits exist
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("log");
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("branch exists but no commits yet"));
 
     let mut cmd = Command::cargo_bin("guts").unwrap();
     cmd.current_dir(temp_dir.path())
