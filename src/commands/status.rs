@@ -1,4 +1,4 @@
-use crate::core::{ignore::IgnoreMatcher, simple_index};
+use crate::core::{ignore::IgnoreMatcher, simple_index, read_head};
 use anyhow::Result;
 use clap::Args;
 use std::collections::HashMap;
@@ -30,13 +30,14 @@ pub fn run(args: &StatusObject) -> Result<String> {
     let index = simple_index::SimpleIndex::load()?;
     let work_files = list_working_dir_files(&current_dir, &matcher)?;
 
+    let current_branch = read_head::get_current_branch()
+        .unwrap_or_else(|_| "main".to_string());
+    
     let mut output = String::new();
-    output.push_str("On branch main\n");
+    output.push_str(&format!("On branch {}\n", current_branch));
 
     if committed_files.is_empty() {
         output.push_str("\nNo commits yet\n");
-    } else {
-        output.push_str("Your branch is up to date with 'origin/main'.\n");
     }
     output.push_str("\n");
 
