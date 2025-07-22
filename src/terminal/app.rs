@@ -136,11 +136,14 @@ impl App {
             "guts cat-file",
             "guts write-tree",
             "guts commit-tree",
+            "guts ls-tree",
             "guts rm",
             "guts add",
             "guts status",
             "guts commit",
             "guts log",
+            "guts ls-files",
+            "guts show-ref",
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -498,6 +501,20 @@ impl App {
                             }),
                         }
                     }
+                    Commands::RevParse(rev_parse_args) => {
+                        match guts::commands::rev_parse::run(&rev_parse_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
                     Commands::Log(mut log_args) => {
                         // Inject current TUI directory
                         log_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
@@ -514,6 +531,52 @@ impl App {
                             }),
                         }
                     }
+                    Commands::ShowRef(mut show_ref_args) => {
+                        // Inject current TUI directory
+                        show_ref_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::show_ref::run(&show_ref_args) {
+                            Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                   Commands::LsTree(mut ls_tree_args) => {
+                        ls_tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::ls_tree::run(&ls_tree_args) {
+                          Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                  Commands::LsFiles(ls_files_args) => {
+                        match guts::commands::ls_files::run(&ls_files_args) {
+                           Ok(out) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    }
+                          
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),

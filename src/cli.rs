@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    add, cat_file, commit, commit_tree, hash_object, init, log, rm, status, write_tree,
+    add, cat_file, commit, commit_tree, hash_object, init, log, rev_parse, rm, show_ref, status,
+    write_tree,ls_tree,ls_files
 };
 
 #[derive(Parser)]
@@ -45,8 +46,20 @@ pub enum Commands {
     /// Create a new commit
     Commit(commit::CommitArgs),
 
+    /// Convert ref/branch/HEAD into SHA-1.
+    RevParse(rev_parse::RevParse),
+
     /// Log head
     Log(log::LogArgs),
+  
+    /// List the contents of a tree object
+    LsTree(ls_tree::LsTreeArgs),
+
+    /// Show all refs and their hashes
+    ShowRef(show_ref::ShowRefArgs),
+
+    /// List all files in the index
+    LsFiles(ls_files::LsFilesArgs),
 
     /// Launch graphical terminal UI
     Tui,
