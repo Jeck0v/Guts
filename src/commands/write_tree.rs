@@ -11,7 +11,7 @@ pub struct WriteTreeArgs {
 
 /// New version of write-tree that uses the simple JSON index
 /// Instead of reading the filesystem, reads the index to create the tree
-pub fn run(args: &WriteTreeArgs) -> Result<String> {
+pub fn run(_args: &WriteTreeArgs) -> Result<String> {
     // Check if we're in a git repository
     if !simple_index::is_git_repository()? {
         return Err(anyhow::anyhow!("fatal: not a git repository"));

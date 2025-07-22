@@ -1,33 +1,40 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
-use predicates::prelude::*;
 
 #[test]
-fn test_hash_object_creates_blob_and_prints_oid() {
+fn test_hash_object_matches_git() {
     // Prepare a temporary directory with a test file
     let temp = assert_fs::TempDir::new().unwrap();
     let file = temp.child("hello.txt");
     file.write_str("Hello, world!\n").unwrap();
 
-    // Initialize a .git repository
-    let _ = guts::core::repo::init(temp.path());
+    // Initialize repositories  
+    Command::cargo_bin("guts").unwrap().current_dir(temp.path()).args(&["init"]).assert().success();
+    Command::new("git").current_dir(temp.path()).args(&["init", "--quiet"]).assert().success();
 
-    // Execute the `guts hash-object <file>` command
-    let mut cmd = Command::cargo_bin("guts").unwrap();
-    cmd.current_dir(temp.path())
-        .arg("hash-object")
-        .arg("hello.txt");
-
-    // Capture the output
-    cmd.assert()
+    // Get hash from official Git
+    let git_output = Command::new("git")
+        .current_dir(temp.path())
+        .args(&["hash-object", "hello.txt"])
+        .assert()
         .success()
-        .stdout(predicate::str::is_match(r"^[a-f0-9]{40}\n$").unwrap());
+        .get_output()
+        .stdout
+        .clone();
+    let git_hash = String::from_utf8_lossy(&git_output).trim().to_string();
 
-    // Verify that the blob file was correctly written
-    let oid_output = cmd.output().unwrap().stdout;
-    let oid = String::from_utf8_lossy(&oid_output).trim().to_string();
-    let (dir, file_name) = oid.split_at(2);
+    // Get hash from our implementation
+    let guts_output = Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(&["hash-object", "hello.txt"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let guts_hash = String::from_utf8_lossy(&guts_output).trim().to_string();
 
-    let object_path = temp.path().join(".git/objects").join(dir).join(file_name);
-    assert!(object_path.exists());
+    // Compare the hashes
+    assert_eq!(git_hash, guts_hash, "Hash from guts should match Git's hash");
 }

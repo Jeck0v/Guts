@@ -9,4 +9,5 @@ pub mod status_binary_index; // Ancien système d'index binaire (préservé) // 
 pub mod read_head;
 pub mod resolve_parse;
 pub mod parse_tree;
+pub mod ignore;
 //pub mod tree;
