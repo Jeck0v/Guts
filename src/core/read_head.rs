@@ -30,3 +30,29 @@ pub fn read_head(guts_dir: &Path, head_input: &str) -> Result<String> {
         Ok(content.trim().to_string())
     }
 }
+
+/// Gets the current branch name from HEAD file
+/// Returns "main" as default if HEAD doesn't exist or isn't a symbolic ref
+pub fn get_current_branch() -> Result<String> {
+    use crate::core::simple_index;
+    
+    // Find the repo root (works for both git and guts repos)
+    let repo_root = simple_index::find_repo_root()
+        .context("Not in a git repository")?;
+    let git_dir = repo_root.join(".git");
+    let head_path = git_dir.join("HEAD");
+    
+    // Read HEAD file content
+    let content = match fs::read_to_string(&head_path) {
+        Ok(content) => content,
+        Err(_) => return Ok("main".to_string()), // Default to main if HEAD doesn't exist
+    };
+
+    // If it's a symbolic reference like "ref: refs/heads/branch-name"
+    if let Some(symbolic) = content.strip_prefix("ref: refs/heads/") {
+        Ok(symbolic.trim().to_string())
+    } else {
+        // If HEAD contains a direct SHA (detached HEAD), return a generic message
+        Ok("HEAD".to_string())
+    }
+}
