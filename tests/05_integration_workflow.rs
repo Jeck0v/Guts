@@ -217,6 +217,149 @@ fn test_basic_git_workflow() {
     println!("🎉 Basic workflow test passed successfully!");
 }
 
+/// Test .gutsignore functionality
+#[test]
+fn test_gutsignore_functionality() {
+    // Create temporary directory
+    let temp_dir = assert_fs::TempDir::new().unwrap();
+    println!("🗂️  Created test directory: {}", temp_dir.path().display());
+
+    // 1. Initialize repository
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("init");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Initialized empty Guts repository"));
+    println!("✅ Repository initialized");
+
+    // 2. Create .gutsignore file
+    let gutsignore = temp_dir.child(".gutsignore");
+    gutsignore.write_str("# Test .gutsignore\n*.log\n*.tmp\nbuild/\ntemp/*\n!temp/keep.txt\nnode_modules\n.env\nsecret.key\ntest_*.bak\n").unwrap();
+    println!("✅ .gutsignore created");
+
+    // 3. Create test files
+    temp_dir.child("README.md").write_str("# Test Project\nThis is a test.").unwrap();
+    temp_dir.child("app.log").write_str("[INFO] Application log").unwrap();
+    temp_dir.child("temp.tmp").write_str("Temporary file").unwrap();
+    temp_dir.child(".env").write_str("SECRET=value").unwrap();
+    temp_dir.child("secret.key").write_str("SECRET_KEY_DATA").unwrap();
+    temp_dir.child("test_data.bak").write_str("Backup file").unwrap();
+    temp_dir.child("important.txt").write_str("Important file").unwrap();
+
+    // Create directories with files
+    temp_dir.child("build").create_dir_all().unwrap();
+    temp_dir.child("build/output.js").write_str("console.log('build');").unwrap();
+    temp_dir.child("temp").create_dir_all().unwrap();
+    temp_dir.child("temp/temp_file.txt").write_str("Should be ignored").unwrap();
+    temp_dir.child("temp/keep.txt").write_str("Should NOT be ignored").unwrap();
+    temp_dir.child("node_modules").create_dir_all().unwrap();
+    temp_dir.child("node_modules/package.json").write_str(r#"{"name":"test"}"#).unwrap();
+
+    println!("✅ Test files created");
+
+    // 4. Check status - should only show non-ignored files
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    let output = cmd.assert().success();
+    let stdout_str = String::from_utf8_lossy(&output.get_output().stdout);
+    
+    // Files that should be visible (not ignored)
+    assert!(stdout_str.contains("README.md"));
+    assert!(stdout_str.contains("important.txt"));
+    assert!(stdout_str.contains("temp/keep.txt"));
+    assert!(stdout_str.contains(".gutsignore"));
+    
+    // Files that should be ignored (not visible in untracked)
+    assert!(!stdout_str.contains("app.log"));
+    assert!(!stdout_str.contains("temp.tmp"));
+    assert!(!stdout_str.contains(".env"));
+    assert!(!stdout_str.contains("secret.key"));
+    assert!(!stdout_str.contains("test_data.bak"));
+    assert!(!stdout_str.contains("build/output.js"));
+    assert!(!stdout_str.contains("temp/temp_file.txt"));
+    assert!(!stdout_str.contains("node_modules"));
+    
+    println!("✅ Status correctly shows only non-ignored files");
+
+    // 5. Try to add ignored files - should be skipped
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("app.log");
+    let output = cmd.assert().success();
+    let stdout_str = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout_str.contains("Added 0 files"));
+    println!("✅ Ignored file (app.log) correctly skipped during add");
+
+    // 6. Add non-ignored file - should work
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("important.txt");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Added: important.txt"));
+    println!("✅ Non-ignored file (important.txt) successfully added");
+
+    // 7. Test negation pattern - temp/keep.txt should be addable despite temp/*
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("temp/keep.txt");
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Added: temp/keep.txt"));
+    println!("✅ Negation pattern (!temp/keep.txt) works correctly");
+
+    // 8. Try to add temp/temp_file.txt - should be ignored
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg("temp/temp_file.txt");
+    let output = cmd.assert().success();
+    let stdout_str = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout_str.contains("Added 0 files"));
+    println!("✅ File in temp/ directory correctly ignored");
+
+    // 9. Test adding all files with "." - should skip ignored ones
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("add").arg(".");
+    let output = cmd.assert().success();
+    let stdout_str = String::from_utf8_lossy(&output.get_output().stdout);
+    
+    // Should have added only non-ignored files
+    assert!(stdout_str.contains("README.md"));
+    assert!(stdout_str.contains(".gutsignore"));
+    // Should not mention ignored files
+    assert!(!stdout_str.contains("app.log"));
+    assert!(!stdout_str.contains("secret.key"));
+    println!("✅ Add all (.) correctly skips ignored files");
+
+    // 10. Final status check
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    let output = cmd.assert().success();
+    let stdout_str = String::from_utf8_lossy(&output.get_output().stdout);
+    
+    // Should show staged files
+    assert!(stdout_str.contains("Changes to be committed"));
+    assert!(stdout_str.contains("new file:   important.txt"));
+    assert!(stdout_str.contains("new file:   temp/keep.txt"));
+    assert!(stdout_str.contains("new file:   README.md"));
+    assert!(stdout_str.contains("new file:   .gutsignore"));
+    println!("✅ Final status shows all added files correctly");
+
+    // 11. Test that .gitignore fallback works
+    fs::remove_file(temp_dir.path().join(".gutsignore")).unwrap();
+    temp_dir.child(".gitignore").write_str("fallback.txt\n").unwrap();
+    temp_dir.child("fallback.txt").write_str("Should be ignored by .gitignore").unwrap();
+    temp_dir.child("normal.txt").write_str("Should not be ignored").unwrap();
+
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    cmd.current_dir(temp_dir.path()).arg("status");
+    let output = cmd.assert().success();
+    let stdout_str = String::from_utf8_lossy(&output.get_output().stdout);
+    
+    // Should show normal.txt but not fallback.txt
+    assert!(stdout_str.contains("normal.txt"));
+    assert!(!stdout_str.contains("fallback.txt"));
+    println!("✅ .gitignore fallback works correctly");
+
+    println!("🎉 .gutsignore functionality test passed successfully!");
+}
+
 /// Test error conditions
 #[test]
 fn test_error_conditions() {
