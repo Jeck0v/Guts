@@ -273,6 +273,7 @@ impl App {
             self.input_history_index = self.input_history.len();
         }
 
+        // Gérer les commandes internes
         if command == "exit" || command == "quit" {
             self.should_quit = true;
             return Ok(());
@@ -291,9 +292,7 @@ impl App {
             let target_dir = if parts.len() > 1 {
                 std::path::PathBuf::from(&self.current_dir).join(parts[1])
             } else {
-                std::env::var("HOME")
-                    .unwrap_or_else(|_| self.current_dir.clone())
-                    .into()
+                std::env::var("HOME").unwrap_or_else(|_| self.current_dir.clone()).into()
             };
 
             let result = match target_dir.canonicalize() {
@@ -319,8 +318,18 @@ impl App {
             return Ok(());
         }
 
-        let cleaned_dir = if self.current_dir.starts_with(r"\?\") {
-            self.current_dir.trim_start_matches(r"\?\").to_string()
+        if command.starts_with("guts ") {
+            let result = self.execute_guts_command(&command)?;
+            self.command_history.push(result);
+            self.input.clear();
+            self.cursor_position = 0;
+            self.scroll_to_bottom();
+            return Ok(());
+        }
+
+        // Sinon, commande système via shell
+        let cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
+            self.current_dir.trim_start_matches(r"\\?\\").to_string()
         } else {
             self.current_dir.clone()
         };
@@ -345,19 +354,19 @@ impl App {
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
                 let combined_output = if !stderr.is_empty() {
-                    format!("{} {}", stdout, stderr)
+                    format!("{}\n{}", stdout, stderr)
                 } else {
                     stdout
                 };
 
                 CommandResult {
-                    command,
+                    command: command.clone(),
                     output: combined_output.trim().to_string(),
                     error: None,
                 }
             }
             Err(e) => CommandResult {
-                command,
+                command: command.clone(),
                 output: String::new(),
                 error: Some(format!("Execution failed: {}", e)),
             },
