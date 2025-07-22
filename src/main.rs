@@ -27,7 +27,7 @@ fn main() -> Result<()> {
         }
         Commands::CatFile(args) => {
             let output = guts::commands::cat_file::run(&args)?;
-            println!("{}", output);
+            print!("{}", output);
         }
         Commands::WriteTree(args) => {
             let output = guts::commands::write_tree::run(&args)?;

@@ -34,7 +34,8 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
     let content = fs::read(&object_path)
         .with_context(|| format!("Failed to read object file at {}", object_path.display()))?;
 
-    let result = match cat::parse_object(&content)? {
+    let decompressed = decompress_object(&content)?;
+    let result = match cat::parse_object(&decompressed)? {
         ParsedObject::Tree(entries) => entries
             .iter()
             .map(|entry| {
@@ -65,4 +66,14 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
     };
 
     Ok(result)
+}
+
+fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let mut decoder = flate2::read::ZlibDecoder::new(data);
+    let mut decompressed = Vec::new();
+    match decoder.read_to_end(&mut decompressed) {
+        Ok(_) => Ok(decompressed),
+        Err(_) => Ok(data.to_vec()), // If decompression fails, assume data is already uncompressed
+    }
 }

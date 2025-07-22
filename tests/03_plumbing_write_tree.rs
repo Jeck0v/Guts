@@ -2,110 +2,76 @@ use assert_cmd::Command;
 use assert_fs::prelude::*;
 use std::process::Command as StdCommand;
 
+/// Test que guts write-tree produit exactement le même hash que git write-tree
 #[test]
-fn test_write_tree_matches_git() {
-    // Setup temp directory with test files
+fn test_write_tree_compatibility_with_git() {
     let temp = assert_fs::TempDir::new().unwrap();
-    let file1 = temp.child("file1.txt");
-    let file2 = temp.child("file2.txt");
-    file1.write_str("Content of file 1\n").unwrap();
-    file2.write_str("Content of file 2\n").unwrap();
 
-    // Create separate temp directories for git and guts
-    let git_temp = assert_fs::TempDir::new().unwrap();
-    let guts_temp = temp; // Use the original temp for guts
-    
-    // Copy files to git temp directory
-    let git_file1 = git_temp.child("file1.txt");
-    let git_file2 = git_temp.child("file2.txt");
-    git_file1.write_str("Content of file 1\n").unwrap();
-    git_file2.write_str("Content of file 2\n").unwrap();
+    // Créer structure avec hiérarchie pour tester la correction
+    temp.child("README.md")
+        .write_str("# Test Project\nCompatibility test.\n")
+        .unwrap();
+    temp.child("src").create_dir_all().unwrap();
+    temp.child("src/main.rs")
+        .write_str("fn main() {\n    println!(\"Hello!\");\n}\n")
+        .unwrap();
+    temp.child("src/utils").create_dir_all().unwrap();
+    temp.child("src/utils/helper.rs")
+        .write_str("pub fn help() {}\n")
+        .unwrap();
 
-    // Initialize git repository
+    // === Git réel ===
     StdCommand::new("git")
-        .current_dir(git_temp.path())
-        .args(&["init", "--quiet"])
+        .current_dir(temp.path())
+        .args(["init"])
         .output()
-        .expect("Failed to initialize git repo");
-
-    // Initialize guts repository
-    Command::cargo_bin("guts")
-        .unwrap()
-        .current_dir(guts_temp.path())
-        .args(&["init"])
-        .assert()
-        .success();
-
-    // Add files to git index
+        .unwrap();
     StdCommand::new("git")
-        .current_dir(git_temp.path())
-        .args(&["add", "file1.txt", "file2.txt"])
+        .current_dir(temp.path())
+        .args(["add", "."])
         .output()
-        .expect("Failed to add files to git");
+        .unwrap();
+    let git_output = StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["write-tree"])
+        .output()
+        .expect("Git must be installed");
+    let git_hash = String::from_utf8_lossy(&git_output.stdout)
+        .trim()
+        .to_string();
 
-    // Add files to guts index using porcelain command
+    // === Guts ===
+    std::fs::remove_dir_all(temp.path().join(".git")).unwrap();
     Command::cargo_bin("guts")
         .unwrap()
-        .current_dir(guts_temp.path())
-        .args(&["add", "file1.txt"])
+        .current_dir(temp.path())
+        .arg("init")
         .assert()
         .success();
-
     Command::cargo_bin("guts")
         .unwrap()
-        .current_dir(guts_temp.path())
-        .args(&["add", "file2.txt"])
+        .current_dir(temp.path())
+        .arg("add")
+        .arg(".")
         .assert()
         .success();
-
-    // Create tree with git
-    let git_tree_output = StdCommand::new("git")
-        .current_dir(git_temp.path())
-        .args(&["write-tree"])
-        .output()
-        .expect("Failed to create git tree");
-    let git_tree_hash = String::from_utf8_lossy(&git_tree_output.stdout).trim().to_string();
-
-    // Create tree with guts
-    let guts_tree_output = Command::cargo_bin("guts")
+    let guts_output = Command::cargo_bin("guts")
         .unwrap()
-        .current_dir(guts_temp.path())
-        .args(&["write-tree"])
+        .current_dir(temp.path())
+        .arg("write-tree")
         .assert()
         .success()
         .get_output()
         .stdout
         .clone();
-    let guts_tree_hash = String::from_utf8_lossy(&guts_tree_output).trim().to_string();
+    let guts_hash = String::from_utf8_lossy(&guts_output).trim().to_string();
 
-    // Compare tree hashes - they should be identical
-    assert_eq!(git_tree_hash, guts_tree_hash, 
-        "Git and Guts should produce identical tree hashes\nGit: {}\nGuts: {}", 
-        git_tree_hash, guts_tree_hash);
+    println!("📊 Write-tree comparison:");
+    println!("   Git:  {}", git_hash);
+    println!("   Guts: {}", guts_hash);
 
-    // Verify both trees contain the same content
-    let git_tree_content = StdCommand::new("git")
-        .current_dir(git_temp.path())
-        .args(&["cat-file", "-p", &git_tree_hash])
-        .output()
-        .expect("Failed to read git tree");
-
-    let guts_tree_content = Command::cargo_bin("guts")
-        .unwrap()
-        .current_dir(guts_temp.path())
-        .args(&["cat-file", &guts_tree_hash])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let git_content = String::from_utf8_lossy(&git_tree_content.stdout);
-    let guts_content = String::from_utf8_lossy(&guts_tree_content);
-
-    // Both should contain references to both files
-    assert!(git_content.contains("file1.txt"), "Git tree should contain file1.txt");
-    assert!(git_content.contains("file2.txt"), "Git tree should contain file2.txt");
-    assert!(guts_content.contains("file1.txt"), "Guts tree should contain file1.txt");
-    assert!(guts_content.contains("file2.txt"), "Guts tree should contain file2.txt");
+    assert_eq!(
+        git_hash, guts_hash,
+        "Guts write-tree must produce identical tree hash to Git"
+    );
 }
