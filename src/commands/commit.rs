@@ -57,6 +57,10 @@ fn run_commit(args: &CommitArgs) -> Result<String> {
         tree: tree_hash.clone(),
         parent,
         message: args.message.clone(),
+        author: "guts <guts@example.com>".to_string(),
+        committer: "guts <guts@example.com>".to_string(),
+        author_date: None,
+        committer_date: None,
         dir: None,
     };
     let commit_hash = commit_tree::run(&commit_tree_args)?;
@@ -83,7 +87,8 @@ fn get_current_head() -> Result<Option<String>> {
 
     // Check if HEAD points to a branch (ref: refs/heads/main)
     if head_content.starts_with("ref: ") {
-        let ref_path = head_content.strip_prefix("ref: ").unwrap();
+        let ref_path = head_content.strip_prefix("ref: ")
+            .ok_or_else(|| anyhow::anyhow!("malformed HEAD reference: {}", head_content))?;
         let ref_file = std::path::Path::new(".git").join(ref_path);
         
         if ref_file.exists() {
@@ -107,7 +112,8 @@ fn update_head(commit_hash: &str) -> Result<()> {
 
     if head_content.starts_with("ref: ") {
         // HEAD points to a branch, update the branch ref
-        let ref_path = head_content.strip_prefix("ref: ").unwrap();
+        let ref_path = head_content.strip_prefix("ref: ")
+            .ok_or_else(|| anyhow::anyhow!("malformed HEAD reference: {}", head_content))?;
         let ref_file = std::path::Path::new(".git").join(ref_path);
         
         // Create parent directories if they don't exist

@@ -43,7 +43,10 @@ pub fn parse_git_index(index_path: &Path) -> Result<Vec<IndexEntry>> {
         return Err(anyhow::anyhow!("Invalid index file (Missing DIRC)"));
     }
 
-    let num_entries = u32::from_be_bytes(data[8..12].try_into().unwrap());
+    let num_entries = u32::from_be_bytes(
+        data[8..12].try_into()
+            .map_err(|_| anyhow::anyhow!("corrupted index file: invalid entry count header"))?
+    );
     let mut entries = Vec::new();
     let mut pos = 12;
 
@@ -62,7 +65,10 @@ pub fn parse_git_index(index_path: &Path) -> Result<Vec<IndexEntry>> {
         // Flags are 2 bytes just after SHA1
         let flags_start = sha_end;
         let flags_end = flags_start + 2;
-        let _flags = u16::from_be_bytes(data[flags_start..flags_end].try_into().unwrap());
+        let _flags = u16::from_be_bytes(
+            data[flags_start..flags_end].try_into()
+                .map_err(|_| anyhow::anyhow!("corrupted index file: invalid flags at entry {}", entries.len()))?
+        );
 
         // Path starts after flags
         let mut path_end = flags_end;

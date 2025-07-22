@@ -144,6 +144,10 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
     let mut tree = String::new();
     let mut parent = None;
     let mut message = String::new();
+    let mut author = String::new();
+    let mut committer = String::new();
+    let mut author_date = 0i64;
+    let mut committer_date = 0i64;
     let mut in_message = false;
 
     for line in text.lines() {
@@ -160,11 +164,35 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
             continue;
         }
 
-        // Parse tree and parent lines
+        // Parse header lines
         if let Some(rest) = line.strip_prefix("tree ") {
             tree = rest.to_string();
         } else if let Some(rest) = line.strip_prefix("parent ") {
             parent = Some(rest.to_string());
+        } else if let Some(rest) = line.strip_prefix("author ") {
+            // Format: "Name <email> timestamp timezone"
+            let parts: Vec<&str> = rest.rsplitn(2, ' ').collect();
+            if parts.len() == 2 {
+                // parts[0] is timezone, parts[1] is "Name <email> timestamp"
+                let name_email_timestamp = parts[1];
+                let timestamp_parts: Vec<&str> = name_email_timestamp.rsplitn(2, ' ').collect();
+                if timestamp_parts.len() == 2 {
+                    author_date = timestamp_parts[0].parse().unwrap_or(0);
+                    author = timestamp_parts[1].to_string();
+                }
+            }
+        } else if let Some(rest) = line.strip_prefix("committer ") {
+            // Format: "Name <email> timestamp timezone"
+            let parts: Vec<&str> = rest.rsplitn(2, ' ').collect();
+            if parts.len() == 2 {
+                // parts[0] is timezone, parts[1] is "Name <email> timestamp"
+                let name_email_timestamp = parts[1];
+                let timestamp_parts: Vec<&str> = name_email_timestamp.rsplitn(2, ' ').collect();
+                if timestamp_parts.len() == 2 {
+                    committer_date = timestamp_parts[0].parse().unwrap_or(0);
+                    committer = timestamp_parts[1].to_string();
+                }
+            }
         }
     }
 
@@ -176,5 +204,9 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
         tree,
         parent,
         message: message.trim_end().to_string(),
+        author: if author.is_empty() { "Unknown <unknown@example.com>".to_string() } else { author },
+        committer: if committer.is_empty() { "Unknown <unknown@example.com>".to_string() } else { committer },
+        author_date,
+        committer_date,
     })
 }
