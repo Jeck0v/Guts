@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
 use predicates::prelude::*;
+use std::fs;
 
 /// Test basic repository initialization
 #[test]
