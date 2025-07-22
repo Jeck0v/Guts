@@ -2,7 +2,6 @@ use anyhow::Result;
 use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use guts::cli::{Cli, Commands};
-use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone)]
 pub struct CommandResult {
@@ -292,7 +291,9 @@ impl App {
             let target_dir = if parts.len() > 1 {
                 std::path::PathBuf::from(&self.current_dir).join(parts[1])
             } else {
-                std::env::var("HOME").unwrap_or_else(|_| self.current_dir.clone()).into()
+                std::env::var("HOME")
+                    .unwrap_or_else(|_| self.current_dir.clone())
+                    .into()
             };
 
             let result = match target_dir.canonicalize() {
@@ -328,7 +329,7 @@ impl App {
         }
 
         // Sinon, commande système via shell
-        let cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
+        let _cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
             self.current_dir.trim_start_matches(r"\\?\\").to_string()
         } else {
             self.current_dir.clone()
@@ -379,7 +380,6 @@ impl App {
 
         Ok(())
     }
-
 
     // ======================= Handles only guts subcommands =======================
     fn execute_guts_command(&mut self, command: &str) -> Result<CommandResult> {
@@ -580,10 +580,10 @@ impl App {
                             }),
                         }
                     }
-                   Commands::LsTree(mut ls_tree_args) => {
+                    Commands::LsTree(mut ls_tree_args) => {
                         ls_tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::ls_tree::run(&ls_tree_args) {
-                          Ok(out) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,
                                 error: None,
@@ -595,9 +595,9 @@ impl App {
                             }),
                         }
                     }
-                  Commands::LsFiles(ls_files_args) => {
+                    Commands::LsFiles(ls_files_args) => {
                         match guts::commands::ls_files::run(&ls_files_args) {
-                           Ok(out) => Ok(CommandResult {
+                            Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,
                                 error: None,
@@ -609,7 +609,7 @@ impl App {
                             }),
                         }
                     }
-                          
+
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),
@@ -621,47 +621,6 @@ impl App {
                 command: command.to_string(),
                 output: String::new(),
                 error: Some(e.to_string()),
-            }),
-        }
-    }
-    // ======================= System COMMANDS =======================
-    // Executes shell/system-level commands
-    fn execute_system_command(&mut self, command: &str) -> Result<CommandResult> {
-        let parts: Vec<&str> = command.split_whitespace().collect();
-        if parts.is_empty() {
-            return Ok(CommandResult {
-                command: command.to_string(),
-                output: String::new(),
-                error: Some("Empty command".to_string()),
-            });
-        }
-
-        let output = Command::new(parts[0])
-            .args(&parts[1..])
-            .current_dir(&self.current_dir)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output();
-
-        match output {
-            Ok(output) => {
-                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-                Ok(CommandResult {
-                    command: command.to_string(),
-                    output: stdout,
-                    error: if stderr.is_empty() {
-                        None
-                    } else {
-                        Some(stderr)
-                    },
-                })
-            }
-            Err(e) => Ok(CommandResult {
-                command: command.to_string(),
-                output: String::new(),
-                error: Some(format!("Failed to execute command: {}", e)),
             }),
         }
     }
