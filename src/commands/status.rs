@@ -1,9 +1,10 @@
 use crate::core::simple_index;
-use anyhow::Result;
+use anyhow::{Result, Context};
 use clap::Args;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+use std::fs;
 
 /// CLI arguments for the `status` command.
 #[derive(Args)]
@@ -29,7 +30,12 @@ pub fn run(args: &StatusObject) -> Result<String> {
     // Load the 3 states
     let committed_files = simple_index::get_committed_files()?; // HEAD commit
     let index = simple_index::SimpleIndex::load()?;             // Staged files
-    let work_files = list_working_dir_files(&current_dir)?;     // Working directory
+    let work_files = list_working_dir_files(&current_dir)?;     // Working directorywith_context
+
+    let test = read_head_ref(&current_dir.join(".git"))?;
+    println!("{:?}", test);
+    /// To remove
+
 
     let mut output = String::new();
     output.push_str("On branch main\n");
@@ -187,4 +193,23 @@ fn calculate_file_hash(file_path: &PathBuf) -> Result<String> {
     let content = fs::read(file_path)?;
     let blob = blob::Blob::new(content);
     hash::write_object(&blob)
+}
+
+
+fn read_head_ref(git_dir: &Path) -> Result<Option<String>> {
+    let head_path = git_dir.join("HEAD");
+    let content = fs::read_to_string(&head_path)
+        .with_context(|| format!("Failed to read {:?}", head_path))?;
+
+    if let Some(stripped) = content.strip_prefix("ref: ") {
+        // Ex: "ref: refs/heads/main" → "main"
+        let name = Path::new(stripped.trim())
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string());
+        Ok(name)
+    } else {
+        // Detached HEAD → pas de nom de branche
+        Ok(None)
+    }
 }

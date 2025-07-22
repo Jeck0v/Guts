@@ -13,6 +13,7 @@ pub fn resolve_ref(guts_dir: &Path, head_input: &str) -> Result<String> {
         guts_dir.join(head_input),
     ];
 
+    
     // Check each path, return the SHA if found
     for path in paths_to_try {
         if path.exists() {
