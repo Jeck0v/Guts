@@ -2,7 +2,6 @@ use anyhow::Result;
 use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use guts::cli::{Cli, Commands};
-use std::fs;
 use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone)]
@@ -265,6 +264,7 @@ impl App {
         Ok(())
     }
     // ======================= EXECUTE COMMANDS =======================
+    // Refactor to use sys exec
     pub fn execute_command(&mut self) -> Result<()> {
         let command = self.input.trim().to_string();
 
@@ -273,81 +273,114 @@ impl App {
             self.input_history_index = self.input_history.len();
         }
 
-        let result = match command.as_str() {
-            "exit" | "quit" => {
-                self.should_quit = true;
-                return Ok(());
-            }
-            "clear" => {
-                self.command_history.clear();
-                self.input.clear();
-                self.cursor_position = 0;
-                self.scroll_offset = 0; // reset scroll position
-                return Ok(());
-            }
-            "pwd" => CommandResult {
-                command: command.clone(),
-                output: self.current_dir.clone(),
-                error: None,
-            },
-            cmd if cmd.starts_with("cd") => {
-                let parts: Vec<&str> = cmd.split_whitespace().collect();
-                let target_dir = if parts.len() > 1 {
-                    std::path::PathBuf::from(&self.current_dir).join(parts[1])
-                } else {
-                    std::env::var("HOME")
-                        .unwrap_or_else(|_| self.current_dir.clone())
-                        .into()
-                };
+        // Gérer les commandes internes
+        if command == "exit" || command == "quit" {
+            self.should_quit = true;
+            return Ok(());
+        }
 
-                match target_dir.canonicalize() {
-                    Ok(path) => {
-                        self.current_dir = path.to_string_lossy().to_string();
-                        CommandResult {
-                            command: command.clone(),
-                            output: format!("Changed directory to {}", self.current_dir),
-                            error: None,
-                        }
-                    }
-                    Err(e) => CommandResult {
-                        command: command.clone(),
-                        output: String::new(),
-                        error: Some(format!("cd error: {}", e)),
-                    },
-                }
-            }
-            "ls" => match fs::read_dir(&self.current_dir) {
-                Ok(entries) => {
-                    let mut lines = vec![];
-                    for entry in entries.flatten() {
-                        if let Ok(name) = entry.file_name().into_string() {
-                            lines.push(name);
-                        }
-                    }
-                    lines.sort();
+        if command == "clear" {
+            self.command_history.clear();
+            self.input.clear();
+            self.cursor_position = 0;
+            self.scroll_offset = 0;
+            return Ok(());
+        }
+
+        if command.starts_with("cd") {
+            let parts: Vec<&str> = command.split_whitespace().collect();
+            let target_dir = if parts.len() > 1 {
+                std::path::PathBuf::from(&self.current_dir).join(parts[1])
+            } else {
+                std::env::var("HOME").unwrap_or_else(|_| self.current_dir.clone()).into()
+            };
+
+            let result = match target_dir.canonicalize() {
+                Ok(path) => {
+                    self.current_dir = path.to_string_lossy().to_string();
                     CommandResult {
                         command: command.clone(),
-                        output: lines.join("\n"),
+                        output: format!("Changed directory to {}", self.current_dir),
                         error: None,
                     }
                 }
                 Err(e) => CommandResult {
                     command: command.clone(),
                     output: String::new(),
-                    error: Some(format!("ls error: {}", e)),
+                    error: Some(format!("cd error: {}", e)),
                 },
+            };
+
+            self.command_history.push(result);
+            self.input.clear();
+            self.cursor_position = 0;
+            self.scroll_to_bottom();
+            return Ok(());
+        }
+
+        if command.starts_with("guts ") {
+            let result = self.execute_guts_command(&command)?;
+            self.command_history.push(result);
+            self.input.clear();
+            self.cursor_position = 0;
+            self.scroll_to_bottom();
+            return Ok(());
+        }
+
+        // Sinon, commande système via shell
+        let cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
+            self.current_dir.trim_start_matches(r"\\?\\").to_string()
+        } else {
+            self.current_dir.clone()
+        };
+
+        #[cfg(target_os = "windows")]
+        let shell_result = std::process::Command::new("powershell")
+            .arg("-Command")
+            .arg(&command)
+            .current_dir(&cleaned_dir)
+            .output();
+
+        #[cfg(not(target_os = "windows"))]
+        let shell_result = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(&command)
+            .current_dir(&self.current_dir)
+            .output();
+
+        let result = match shell_result {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+                let combined_output = if !stderr.is_empty() {
+                    format!("{}\n{}", stdout, stderr)
+                } else {
+                    stdout
+                };
+
+                CommandResult {
+                    command: command.clone(),
+                    output: combined_output.trim().to_string(),
+                    error: None,
+                }
+            }
+            Err(e) => CommandResult {
+                command: command.clone(),
+                output: String::new(),
+                error: Some(format!("Execution failed: {}", e)),
             },
-            cmd if cmd.starts_with("guts ") => self.execute_guts_command(&command)?,
-            _ => self.execute_system_command(&command)?,
         };
 
         self.command_history.push(result);
         self.input.clear();
         self.cursor_position = 0;
+        self.scroll_to_bottom();
 
-        self.scroll_to_bottom(); // Auto-scroll after new command
         Ok(())
     }
+
+
     // ======================= Handles only guts subcommands =======================
     fn execute_guts_command(&mut self, command: &str) -> Result<CommandResult> {
         let args: Vec<&str> = command.split_whitespace().collect();

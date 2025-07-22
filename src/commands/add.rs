@@ -1,8 +1,8 @@
-use crate::core::simple_index;
+use crate::core::{ignore::IgnoreMatcher, simple_index};
 use anyhow::{anyhow, Result};
 use clap::Args;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf};
 
 /// Arguments for the `guts add` command
 #[derive(Args)]
@@ -10,6 +10,7 @@ pub struct AddArgs {
     /// File(s) to add to the staging area
     #[arg(required = true)]
     pub files: Vec<PathBuf>,
+
     /// Current directory for the operation (injected by TUI)
     #[arg(last = true)]
     pub dir: Option<PathBuf>,
@@ -62,12 +63,19 @@ pub fn run(args: &AddArgs) -> Result<String> {
         .clone()
         .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
 
+    // Load .gutsignore matcher
+    let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
+        .unwrap_or_else(|_| IgnoreMatcher::empty());
+
     // Process each requested file
     for file_path in &args.files {
         // Support for "." - add all files from current directory
         if file_path.to_string_lossy() == "." {
             let files = collect_files_recursively(&current_dir)?;
             for file in files {
+                if matcher.is_ignored(&file, &current_dir) {
+                    continue;
+                }
                 simple_index::add_file_to_index(&file)?;
                 added_files.push(file.display().to_string());
             }
@@ -86,10 +94,17 @@ pub fn run(args: &AddArgs) -> Result<String> {
             // If it's a directory, add all files recursively
             let files = collect_files_recursively(file_path)?;
             for file in files {
+                if matcher.is_ignored(&file, &current_dir) {
+                    continue;
+                }
                 simple_index::add_file_to_index(&file)?;
                 added_files.push(file.display().to_string());
             }
         } else {
+            // Skip if ignored
+            if matcher.is_ignored(file_path, &current_dir) {
+                continue;
+            }
             // Add the file to the JSON index
             simple_index::add_file_to_index(file_path)?;
             added_files.push(file_path.display().to_string());
