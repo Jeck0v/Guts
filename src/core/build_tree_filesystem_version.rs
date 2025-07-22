@@ -26,7 +26,7 @@ pub fn build_tree(dir: &Path) -> Result<Tree> {
         let name = entry
             .file_name()
             .into_string()
-            .expect("File name is not valid UTF-8"); // Convert OsString to String
+            .map_err(|os_string| anyhow::anyhow!("File name is not valid UTF-8: {:?}", os_string))?;
 
         if name == ".git" {
             // Skip the internal .git directory (where your git objects are stored)
@@ -47,7 +47,8 @@ pub fn build_tree(dir: &Path) -> Result<Tree> {
             let oid_hex = hash::write_object(&blob)?;
 
             // Decode the hex SHA1 hash into raw bytes (20 bytes for SHA1)
-            let hash_bin = hex::decode(oid_hex).expect("valid SHA1 hex");
+            let hash_bin = hex::decode(&oid_hex)
+                .with_context(|| format!("invalid SHA1 hex from hash calculation: {}", oid_hex))?;
 
             // Create fixed-size array to store the 20-byte hash
             let mut hash = [0u8; 20];

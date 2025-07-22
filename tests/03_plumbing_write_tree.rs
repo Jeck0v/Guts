@@ -1,87 +1,111 @@
-use anyhow::Result;
-
-use guts::core::cat::{parse_object, parse_tree_body, ParsedObject};
-
-#[test]
-fn test_parse_tree_body_single_entry() -> Result<()> {
-    // Exemple minimal d'entrée d'un tree Git:
-    // mode = "100644"
-    // nom = "file.txt"
-    // hash = 20 octets arbitraires (ici 0x01, 0x02, ..., 0x14)
-
-    let mut data = Vec::new();
-    data.extend(b"100644 "); // mode + espace
-    data.extend(b"file.txt"); // nom
-    data.push(0); // null byte
-    data.extend((1u8..=20).collect::<Vec<u8>>()); // hash SHA1 fictif 20 octets
-
-    let entries = parse_tree_body(&data)?;
-
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].mode, "100644");
-    assert_eq!(entries[0].name, "file.txt");
-    assert_eq!(entries[0].hash, {
-        let mut h = [0u8; 20];
-        for (i, b) in (1u8..=20).enumerate() {
-            h[i] = b;
-        }
-        h
-    });
-
-    Ok(())
-}
+use assert_cmd::Command;
+use assert_fs::prelude::*;
+use std::process::Command as StdCommand;
 
 #[test]
-fn test_parse_object_tree() -> Result<()> {
-    // Construire un objet git complet (header + body) simulant un tree à 1 entrée
-    let mut body = Vec::new();
-    body.extend(b"100644 ");
-    body.extend(b"file.txt");
-    body.push(0);
-    body.extend((1u8..=20).collect::<Vec<u8>>());
+fn test_write_tree_matches_git() {
+    // Setup temp directory with test files
+    let temp = assert_fs::TempDir::new().unwrap();
+    let file1 = temp.child("file1.txt");
+    let file2 = temp.child("file2.txt");
+    file1.write_str("Content of file 1\n").unwrap();
+    file2.write_str("Content of file 2\n").unwrap();
 
-    let header = format!("tree {}\0", body.len());
-    let mut data = header.into_bytes();
-    data.extend(body);
+    // Create separate temp directories for git and guts
+    let git_temp = assert_fs::TempDir::new().unwrap();
+    let guts_temp = temp; // Use the original temp for guts
+    
+    // Copy files to git temp directory
+    let git_file1 = git_temp.child("file1.txt");
+    let git_file2 = git_temp.child("file2.txt");
+    git_file1.write_str("Content of file 1\n").unwrap();
+    git_file2.write_str("Content of file 2\n").unwrap();
 
-    // Parse the full object
-    let parsed = parse_object(&data)?;
+    // Initialize git repository
+    StdCommand::new("git")
+        .current_dir(git_temp.path())
+        .args(&["init", "--quiet"])
+        .output()
+        .expect("Failed to initialize git repo");
 
-    match parsed {
-        ParsedObject::Tree(entries) => {
-            assert_eq!(entries.len(), 1);
-            assert_eq!(entries[0].mode, "100644");
-            assert_eq!(entries[0].name, "file.txt");
-            assert_eq!(entries[0].hash, {
-                let mut h = [0u8; 20];
-                for (i, b) in (1u8..=20).enumerate() {
-                    h[i] = b;
-                }
-                h
-            });
-        }
-        _ => panic!("Expected ParsedObject::Tree"),
-    }
+    // Initialize guts repository
+    Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(guts_temp.path())
+        .args(&["init"])
+        .assert()
+        .success();
 
-    Ok(())
-}
+    // Add files to git index
+    StdCommand::new("git")
+        .current_dir(git_temp.path())
+        .args(&["add", "file1.txt", "file2.txt"])
+        .output()
+        .expect("Failed to add files to git");
 
-#[test]
-fn test_parse_object_blob() -> Result<()> {
-    // Construire un objet git blob (header + content)
-    let content = b"Hello, world!";
-    let header = format!("blob {}\0", content.len());
-    let mut data = header.into_bytes();
-    data.extend(content);
+    // Add files to guts index using porcelain command
+    Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(guts_temp.path())
+        .args(&["add", "file1.txt"])
+        .assert()
+        .success();
 
-    let parsed = parse_object(&data)?;
+    Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(guts_temp.path())
+        .args(&["add", "file2.txt"])
+        .assert()
+        .success();
 
-    match parsed {
-        ParsedObject::Blob(bytes) => {
-            assert_eq!(bytes, b"Hello, world!");
-        }
-        _ => panic!("Expected ParsedObject::Blob"),
-    }
+    // Create tree with git
+    let git_tree_output = StdCommand::new("git")
+        .current_dir(git_temp.path())
+        .args(&["write-tree"])
+        .output()
+        .expect("Failed to create git tree");
+    let git_tree_hash = String::from_utf8_lossy(&git_tree_output.stdout).trim().to_string();
 
-    Ok(())
+    // Create tree with guts
+    let guts_tree_output = Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(guts_temp.path())
+        .args(&["write-tree"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let guts_tree_hash = String::from_utf8_lossy(&guts_tree_output).trim().to_string();
+
+    // Compare tree hashes - they should be identical
+    assert_eq!(git_tree_hash, guts_tree_hash, 
+        "Git and Guts should produce identical tree hashes\nGit: {}\nGuts: {}", 
+        git_tree_hash, guts_tree_hash);
+
+    // Verify both trees contain the same content
+    let git_tree_content = StdCommand::new("git")
+        .current_dir(git_temp.path())
+        .args(&["cat-file", "-p", &git_tree_hash])
+        .output()
+        .expect("Failed to read git tree");
+
+    let guts_tree_content = Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(guts_temp.path())
+        .args(&["cat-file", &guts_tree_hash])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let git_content = String::from_utf8_lossy(&git_tree_content.stdout);
+    let guts_content = String::from_utf8_lossy(&guts_tree_content);
+
+    // Both should contain references to both files
+    assert!(git_content.contains("file1.txt"), "Git tree should contain file1.txt");
+    assert!(git_content.contains("file2.txt"), "Git tree should contain file2.txt");
+    assert!(guts_content.contains("file1.txt"), "Guts tree should contain file1.txt");
+    assert!(guts_content.contains("file2.txt"), "Guts tree should contain file2.txt");
 }

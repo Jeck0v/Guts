@@ -46,11 +46,17 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
         ParsedObject::Blob(data) => String::from_utf8_lossy(&data).to_string(),
         ParsedObject::Commit(data) => {
             let mut out = String::new();
-            out += &format!("tree: {}\n", data.tree);
+            out += &format!("tree {}\n", data.tree);
             if let Some(parent) = &data.parent {
-                out += &format!("parent: {}\n", parent);
+                out += &format!("parent {}\n", parent);
             }
-            out += &format!("message: {}", data.message);
+            out += &format!("author {} {} +0000\n", data.author, data.author_date);
+            out += &format!("committer {} {} +0000\n", data.committer, data.committer_date);
+            out += "\n";
+            out += &data.message;
+            if !data.message.ends_with('\n') {
+                out += "\n";
+            }
             out
         }
         ParsedObject::Other(obj_type, _) => {
