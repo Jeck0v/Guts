@@ -139,12 +139,12 @@ fn list_working_dir_files(current_dir: &PathBuf, matcher: &IgnoreMatcher) -> Res
             return false;
         }
 
-        !matcher.is_ignored(path)
+        !matcher.is_ignored(path, &current_dir)
     });
 
     for entry in walker {
         let entry = entry?;
-        if entry.file_type().is_file() && !matcher.is_ignored(entry.path()) {
+        if entry.file_type().is_file() && !matcher.is_ignored(entry.path(), &current_dir) {
             files.push(entry.into_path());
         }
     }

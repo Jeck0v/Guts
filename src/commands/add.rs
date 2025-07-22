@@ -73,7 +73,7 @@ pub fn run(args: &AddArgs) -> Result<String> {
         if file_path.to_string_lossy() == "." {
             let files = collect_files_recursively(&current_dir)?;
             for file in files {
-                if matcher.is_ignored(&file) {
+                if matcher.is_ignored(&file, &current_dir) {
                     continue;
                 }
                 simple_index::add_file_to_index(&file)?;
@@ -94,7 +94,7 @@ pub fn run(args: &AddArgs) -> Result<String> {
             // If it's a directory, add all files recursively
             let files = collect_files_recursively(file_path)?;
             for file in files {
-                if matcher.is_ignored(&file) {
+                if matcher.is_ignored(&file, &current_dir) {
                     continue;
                 }
                 simple_index::add_file_to_index(&file)?;
@@ -102,7 +102,7 @@ pub fn run(args: &AddArgs) -> Result<String> {
             }
         } else {
             // Skip if ignored
-            if matcher.is_ignored(file_path) {
+            if matcher.is_ignored(file_path, &current_dir) {
                 continue;
             }
             // Add the file to the JSON index
