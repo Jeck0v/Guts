@@ -245,3 +245,49 @@ fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
         }
     }
 }
+
+/// Find Git repository root from a specific directory
+pub fn find_repo_root_from(start_dir: Option<&PathBuf>) -> Result<PathBuf> {
+    let mut current = match start_dir {
+        Some(dir) => dir.clone(),
+        None => std::env::current_dir().with_context(|| "unable to get current directory")?,
+    };
+
+    loop {
+        let git_dir = current.join(".git");
+        if git_dir.exists() && git_dir.is_dir() {
+            return Ok(current);
+        }
+
+        match current.parent() {
+            Some(parent) => current = parent.to_path_buf(),
+            None => return Err(anyhow!("not a git repository")),
+        }
+    }
+}
+
+/// Check if we're in a Git repository from a specific directory
+pub fn is_git_repository_from(start_dir: Option<&PathBuf>) -> Result<bool> {
+    match find_repo_root_from(start_dir) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
+    }
+}
+
+/// Add a file to the index from a specific directory context
+pub fn add_file_to_index_from(file_path: &Path, start_dir: Option<&PathBuf>) -> Result<()> {
+    // Set current directory context if provided
+    let original_dir = std::env::current_dir()?;
+    
+    if let Some(dir) = start_dir {
+        std::env::set_current_dir(dir)?;
+    }
+    
+    // Use existing add_file_to_index function
+    let result = add_file_to_index(file_path);
+    
+    // Restore original directory
+    std::env::set_current_dir(&original_dir)?;
+    
+    result
+}
