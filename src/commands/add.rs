@@ -49,19 +49,19 @@ fn collect_files_recursively(dir: &PathBuf) -> Result<Vec<PathBuf>> {
 /// Main function for the `guts add` command
 /// Adds files to the staging area (index)
 pub fn run(args: &AddArgs) -> Result<String> {
-    // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
-        return Err(anyhow!("fatal: not a git repository"));
-    }
-
-    let mut added_files = Vec::new();
-    let mut output = String::new();
-
     // Determine current directory to use
     let current_dir = args
         .dir
         .clone()
         .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
+
+    // Check if we're in a git repository
+    if !simple_index::is_git_repository_from(Some(&current_dir))? {
+        return Err(anyhow!("fatal: not a git repository"));
+    }
+
+    let mut added_files = Vec::new();
+    let mut output = String::new();
 
     // Load .gutsignore matcher
     let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
@@ -76,7 +76,7 @@ pub fn run(args: &AddArgs) -> Result<String> {
                 if matcher.is_ignored(&file, &current_dir) {
                     continue;
                 }
-                simple_index::add_file_to_index(&file)?;
+                simple_index::add_file_to_index_from(&file, Some(&current_dir))?;
                 added_files.push(file.display().to_string());
             }
             continue;
@@ -97,7 +97,7 @@ pub fn run(args: &AddArgs) -> Result<String> {
                 if matcher.is_ignored(&file, &current_dir) {
                     continue;
                 }
-                simple_index::add_file_to_index(&file)?;
+                simple_index::add_file_to_index_from(&file, Some(&current_dir))?;
                 added_files.push(file.display().to_string());
             }
         } else {
@@ -106,7 +106,7 @@ pub fn run(args: &AddArgs) -> Result<String> {
                 continue;
             }
             // Add the file to the JSON index
-            simple_index::add_file_to_index(file_path)?;
+            simple_index::add_file_to_index_from(file_path, Some(&current_dir))?;
             added_files.push(file_path.display().to_string());
         }
     }
