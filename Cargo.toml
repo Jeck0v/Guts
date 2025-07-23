@@ -17,6 +17,7 @@ chrono = { version = "0.4", features = ["clock"] }
 walkdir = "2"
 flate2 = "1.0"
 globset = "0.4.16"
+dirs = "6.0.0"
 
 [dev-dependencies]
 assert_fs = "1.0"

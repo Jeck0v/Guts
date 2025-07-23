@@ -2,6 +2,9 @@ use anyhow::Result;
 use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use guts::cli::{Cli, Commands};
+use std::process::{Command, Stdio};
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::io::Stdout;
 
 #[derive(Debug, Clone)]
 pub struct CommandResult {
@@ -23,6 +26,9 @@ pub struct App {
     pub autocomplete_list: Vec<String>, // auto complete
     pub show_autocomplete: bool,
     pub autocomplete_index: usize,
+    pub force_redraw: bool,
+    pub last_executed_command: Option<String>
+
 }
 
 impl Default for App {
@@ -43,6 +49,8 @@ impl Default for App {
             autocomplete_list: Vec::new(),
             show_autocomplete: false,
             autocomplete_index: 0,
+            force_redraw: false,
+            last_executed_command: None
         }
     }
 }
@@ -51,6 +59,7 @@ impl App {
     pub fn new() -> Self {
         Self::default()
     }
+
     // ======================= Line & Scroll =======================
     // calc line hysto
     pub fn total_history_lines(&self) -> usize {
@@ -128,6 +137,9 @@ impl App {
             "clear",
             "exit",
             "quit",
+            "nano",
+            "vim",
+            "vi",
             "guts",
             "guts init",
             "guts hash-object",
@@ -142,6 +154,7 @@ impl App {
             "guts log",
             "guts ls-files",
             "guts show-ref",
+            "guts checkout"
         ];
         for cmd in basic_cmds {
             if cmd.starts_with(&self.input) {
@@ -184,11 +197,13 @@ impl App {
                 if self.cursor_position > 0 {
                     self.input.remove(self.cursor_position - 1);
                     self.cursor_position -= 1;
+                    self.update_autocomplete();
                 }
             }
             KeyCode::Delete => {
                 if self.cursor_position < self.input.len() {
                     self.input.remove(self.cursor_position);
+                    self.update_autocomplete();
                 }
             }
             KeyCode::Left => {
@@ -256,23 +271,34 @@ impl App {
             KeyCode::Tab => {
                 if self.show_autocomplete {
                     self.apply_autocomplete();
+                } else {
+                    self.update_autocomplete();
                 }
             }
             _ => {}
         }
         Ok(())
     }
+
+    // ======================= Helper method =======================
+    fn finalize_command(&mut self) {
+        self.input.clear();
+        self.cursor_position = 0;
+        self.scroll_to_bottom();
+    }
+
     // ======================= EXECUTE COMMANDS =======================
-    // Refactor to use sys exec
     pub fn execute_command(&mut self) -> Result<()> {
         let command = self.input.trim().to_string();
+        self.last_executed_command = Some(command.clone());
+
 
         if !command.is_empty() {
             self.input_history.push(command.clone());
             self.input_history_index = self.input_history.len();
         }
 
-        // Gérer les commandes internes
+        // interne command
         if command == "exit" || command == "quit" {
             self.should_quit = true;
             return Ok(());
@@ -280,55 +306,146 @@ impl App {
 
         if command == "clear" {
             self.command_history.clear();
-            self.input.clear();
-            self.cursor_position = 0;
+            self.finalize_command();
             self.scroll_offset = 0;
             return Ok(());
         }
 
         if command.starts_with("cd") {
-            let parts: Vec<&str> = command.split_whitespace().collect();
-            let target_dir = if parts.len() > 1 {
-                std::path::PathBuf::from(&self.current_dir).join(parts[1])
-            } else {
-                std::env::var("HOME")
-                    .unwrap_or_else(|_| self.current_dir.clone())
-                    .into()
-            };
-
-            let result = match target_dir.canonicalize() {
-                Ok(path) => {
-                    self.current_dir = path.to_string_lossy().to_string();
-                    CommandResult {
-                        command: command.clone(),
-                        output: format!("Changed directory to {}", self.current_dir),
-                        error: None,
-                    }
-                }
-                Err(e) => CommandResult {
-                    command: command.clone(),
-                    output: String::new(),
-                    error: Some(format!("cd error: {}", e)),
-                },
-            };
-
+            let result = self.handle_cd_command(&command);
             self.command_history.push(result);
-            self.input.clear();
-            self.cursor_position = 0;
-            self.scroll_to_bottom();
+            self.finalize_command();
             return Ok(());
         }
 
         if command.starts_with("guts ") {
             let result = self.execute_guts_command(&command)?;
             self.command_history.push(result);
-            self.input.clear();
-            self.cursor_position = 0;
-            self.scroll_to_bottom();
+            self.finalize_command();
             return Ok(());
         }
 
-        // Sinon, commande système via shell
+        // editor nano/vim/vi
+        if command.starts_with("nano") || command.starts_with("vim") || command.starts_with("vi") {
+            return Ok(());
+        }
+
+        // sys command
+        let result = self.execute_shell_command(&command);
+        self.command_history.push(result);
+        self.finalize_command();
+
+        Ok(())
+    }
+
+    // ======================= CD Command Handler =======================
+    fn handle_cd_command(&mut self, command: &str) -> CommandResult {
+        let parts: Vec<&str> = command.split_whitespace().collect();
+        let target_dir = if parts.len() > 1 {
+            std::path::PathBuf::from(&self.current_dir).join(parts[1])
+        } else {
+            std::env::var("HOME").unwrap_or_else(|_| self.current_dir.clone()).into()
+        };
+
+        match target_dir.canonicalize() {
+            Ok(path) => {
+                self.current_dir = path.to_string_lossy().to_string();
+                CommandResult {
+                    command: command.to_string(),
+                    output: format!("Changed directory to {}", self.current_dir),
+                    error: None,
+                }
+            }
+            Err(e) => CommandResult {
+                command: command.to_string(),
+                output: String::new(),
+                error: Some(format!("cd error: {}", e)),
+            },
+        }
+    }
+
+    // ======================= Editor Handler =======================
+
+    pub fn handle_editor_command(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+        command: &str,
+    ) -> Result<()> {
+        use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+        use std::io::{self, Write};
+        use std::path::PathBuf;
+        use std::process::Command;
+
+        // out of the terminal
+        terminal.clear()?; // clear tui
+        drop(terminal);
+        disable_raw_mode()?; // out raw mode
+
+        // clear terminal
+        print!("\x1B[2J\x1B[H\x1B[?25h"); // Clear + move cursor + show cursor
+        io::stdout().flush().unwrap();
+
+        // command parse
+        let parts: Vec<&str> = command.split_whitespace().collect();
+        let editor = parts[0];
+        let args = &parts[1..];
+
+        // fix bug onedrive
+        let mut safe_dir = PathBuf::from(&self.current_dir);
+        if safe_dir.to_string_lossy().to_lowercase().contains("onedrive") {
+            if let Some(doc_dir) = dirs::document_dir() {
+                safe_dir = doc_dir;
+            } else {
+                safe_dir = std::env::temp_dir();
+            }
+        }
+
+        // launch editor
+        let status = if cfg!(target_os = "windows") {
+            let full_command = format!("{} {}", editor, args.join(" "));
+            Command::new("cmd")
+                .args(&["/C", &full_command])
+                .current_dir(&safe_dir)
+                .status()
+        } else {
+            let mut cmd = Command::new(editor);
+            cmd.args(args).current_dir(&safe_dir);
+            cmd.status()
+        };
+
+        let result = match status {
+            Ok(exit_status) => {
+                let message = if exit_status.success() {
+                    format!("Editor {} exited successfully", editor)
+                } else {
+                    format!(
+                        "Editor {} exited with code: {}",
+                        editor,
+                        exit_status.code().unwrap_or(-1)
+                    )
+                };
+                CommandResult {
+                    command: command.to_string(),
+                    output: message,
+                    error: None,
+                }
+            }
+            Err(e) => CommandResult {
+                command: command.to_string(),
+                output: String::new(),
+                error: Some(format!("Failed to launch {}: {}", editor, e)),
+            },
+        };
+
+        // add historic
+        self.command_history.push(result);
+        self.finalize_command();
+
+        Ok(())
+    }
+
+    // ======================= Shell Command Handler =======================
+    fn execute_shell_command(&self, command: &str) -> CommandResult {
         let cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
             self.current_dir.trim_start_matches(r"\\?\\").to_string()
         } else {
@@ -336,20 +453,20 @@ impl App {
         };
 
         #[cfg(target_os = "windows")]
-        let shell_result = std::process::Command::new("powershell")
+        let shell_result = Command::new("powershell")
             .arg("-Command")
-            .arg(&command)
+            .arg(command)
             .current_dir(&cleaned_dir)
             .output();
 
         #[cfg(not(target_os = "windows"))]
-        let shell_result = std::process::Command::new("sh")
+        let shell_result = Command::new("sh")
             .arg("-c")
-            .arg(&command)
-            .current_dir(&cleaned_dir)
+            .arg(command)
+            .current_dir(&self.current_dir)
             .output();
 
-        let result = match shell_result {
+        match shell_result {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -361,24 +478,17 @@ impl App {
                 };
 
                 CommandResult {
-                    command: command.clone(),
+                    command: command.to_string(),
                     output: combined_output.trim().to_string(),
                     error: None,
                 }
             }
             Err(e) => CommandResult {
-                command: command.clone(),
+                command: command.to_string(),
                 output: String::new(),
                 error: Some(format!("Execution failed: {}", e)),
             },
-        };
-
-        self.command_history.push(result);
-        self.input.clear();
-        self.cursor_position = 0;
-        self.scroll_to_bottom();
-
-        Ok(())
+        }
     }
 
     // ======================= Handles only guts subcommands =======================
@@ -513,8 +623,8 @@ impl App {
                             }),
                             Err(e) => Ok(CommandResult {
                                 command: command.to_string(),
-                                output: String::new(),
                                 error: Some(e.to_string()),
+                                output: String::new(),
                             }),
                         }
                     }
@@ -583,7 +693,7 @@ impl App {
                     Commands::Checkout(checkout_object) => {
                         match guts::commands::checkout::run(&checkout_object) {
                             Ok(out) => Ok(CommandResult {
-                                
+
                                 command: command.to_string(),
                                 output: out,
                                 error: None,
@@ -609,7 +719,7 @@ impl App {
                                 error: Some(e.to_string()),
                             }),
                         }
-                    }
+                    },
                     Commands::LsFiles(ls_files_args) => {
                         match guts::commands::ls_files::run(&ls_files_args) {
                             Ok(out) => Ok(CommandResult {
@@ -627,7 +737,7 @@ impl App {
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),
-                        error: Some("Cannot launch TUI".to_string()),
+                        error: Some("Cannot launch TUI from within TUI".to_string()),
                     }),
                 }
             }
@@ -635,6 +745,48 @@ impl App {
                 command: command.to_string(),
                 output: String::new(),
                 error: Some(e.to_string()),
+            }),
+        }
+    }
+
+    // ======================= System COMMANDS =======================
+    // Executes shell/system-level commands
+    fn execute_system_command(&mut self, command: &str) -> Result<CommandResult> {
+        let parts: Vec<&str> = command.split_whitespace().collect();
+        if parts.is_empty() {
+            return Ok(CommandResult {
+                command: command.to_string(),
+                output: String::new(),
+                error: Some("Empty command".to_string()),
+            });
+        }
+
+        let output = Command::new(parts[0])
+            .args(&parts[1..])
+            .current_dir(&self.current_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output();
+
+        match output {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+                Ok(CommandResult {
+                    command: command.to_string(),
+                    output: stdout,
+                    error: if stderr.is_empty() {
+                        None
+                    } else {
+                        Some(stderr)
+                    },
+                })
+            }
+            Err(e) => Ok(CommandResult {
+                command: command.to_string(),
+                output: String::new(),
+                error: Some(format!("Failed to execute command: {}", e)),
             }),
         }
     }
