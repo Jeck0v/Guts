@@ -19,15 +19,15 @@ pub fn run(args: &StatusObject) -> Result<String> {
         .clone()
         .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
 
-    if !simple_index::is_git_repository()? {
+    if !simple_index::is_git_repository_from(Some(&current_dir))? {
         return Ok("fatal: not a git repository".to_string());
     }
 
     let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
         .unwrap_or_else(|_| IgnoreMatcher::empty());
 
-    let committed_files = simple_index::get_committed_files()?;
-    let index = simple_index::SimpleIndex::load()?;
+    let committed_files = simple_index::get_committed_files_from(Some(&current_dir))?;
+    let index = simple_index::SimpleIndex::load_from(Some(&current_dir))?;
     let work_files = list_working_dir_files(&current_dir, &matcher)?;
 
     let current_branch = read_head::get_current_branch()
@@ -154,9 +154,11 @@ fn list_working_dir_files(current_dir: &PathBuf, matcher: &IgnoreMatcher) -> Res
 }
 
 fn get_relative_path(file_path: &PathBuf, current_dir: &PathBuf) -> Result<String> {
+    // Find repo root from current directory context
+    let repo_root = simple_index::find_repo_root_from(Some(current_dir))?;
     let relative = file_path
-        .strip_prefix(current_dir)
-        .map_err(|_| anyhow::anyhow!("file is not in the current directory"))?;
+        .strip_prefix(&repo_root)
+        .map_err(|_| anyhow::anyhow!("file is not in the repository"))?;
     Ok(relative.to_string_lossy().to_string())
 }
 

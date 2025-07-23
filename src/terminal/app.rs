@@ -329,7 +329,7 @@ impl App {
         }
 
         // Sinon, commande système via shell
-        let _cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
+        let cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
             self.current_dir.trim_start_matches(r"\\?\\").to_string()
         } else {
             self.current_dir.clone()
@@ -346,7 +346,7 @@ impl App {
         let shell_result = std::process::Command::new("sh")
             .arg("-c")
             .arg(&command)
-            .current_dir(&self.current_dir)
+            .current_dir(&cleaned_dir)
             .output();
 
         let result = match shell_result {
