@@ -17,7 +17,6 @@ pub fn resolve_ref(guts_dir: &Path, head_input: &str) -> Result<String> {
         }
     }
 
-    // Puis la suite comme avant...
     if head_input.len() == 40 && head_input.chars().all(|c| c.is_ascii_hexdigit()) {
         return Ok(head_input.to_string());
     }

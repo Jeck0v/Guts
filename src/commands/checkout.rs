@@ -142,19 +142,15 @@ fn clean_working_directory(current_dir: &Path, git_dir: &Path, tree_sha: &str) -
         let path = entry.path();
 
         if path == *git_dir {
-            continue; // never delete .git
-        }
-
-        // Compute path relative to current_dir
-        let relative_path = path.strip_prefix(current_dir).unwrap();
-
-        if tracked_paths.contains(relative_path) {
-            // This file/dir exists in target tree, keep it
             continue;
         }
 
-        // Path is not tracked in target tree, but exists on disk
-        // Delete it because it is tracked in current working directory but not in target branch
+        let relative_path = path.strip_prefix(current_dir).unwrap();
+
+        if tracked_paths.contains(relative_path) {
+            continue;
+        }
+
         if path.is_dir() {
             fs::remove_dir_all(&path)
                 .with_context(|| format!("Failed to remove directory {:?}", path))?;
