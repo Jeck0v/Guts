@@ -22,7 +22,9 @@ pub fn write_object(obj: &impl GitObject) -> Result<String> {
         return Ok(hex);
     }
 
-    fs::create_dir_all(path.parent().unwrap())
+    let parent_dir = path.parent()
+        .ok_or_else(|| anyhow::anyhow!("invalid object path: no parent directory"))?;
+    fs::create_dir_all(parent_dir)
         .with_context(|| "failed to create object directory")?;
     fs::write(&path, serialized)
         .with_context(|| format!("failed to write object to {:?}", path))?;

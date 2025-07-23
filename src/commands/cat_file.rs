@@ -34,7 +34,8 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
     let content = fs::read(&object_path)
         .with_context(|| format!("Failed to read object file at {}", object_path.display()))?;
 
-    let result = match cat::parse_object(&content)? {
+    let decompressed = decompress_object(&content)?;
+    let result = match cat::parse_object(&decompressed)? {
         ParsedObject::Tree(entries) => entries
             .iter()
             .map(|entry| {
@@ -46,11 +47,17 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
         ParsedObject::Blob(data) => String::from_utf8_lossy(&data).to_string(),
         ParsedObject::Commit(data) => {
             let mut out = String::new();
-            out += &format!("tree: {}\n", data.tree);
+            out += &format!("tree {}\n", data.tree);
             if let Some(parent) = &data.parent {
-                out += &format!("parent: {}\n", parent);
+                out += &format!("parent {}\n", parent);
             }
-            out += &format!("message: {}", data.message);
+            out += &format!("author {} {} +0000\n", data.author, data.author_date);
+            out += &format!("committer {} {} +0000\n", data.committer, data.committer_date);
+            out += "\n";
+            out += &data.message;
+            if !data.message.ends_with('\n') {
+                out += "\n";
+            }
             out
         }
         ParsedObject::Other(obj_type, _) => {
@@ -59,4 +66,14 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
     };
 
     Ok(result)
+}
+
+fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
+    use std::io::Read;
+    let mut decoder = flate2::read::ZlibDecoder::new(data);
+    let mut decompressed = Vec::new();
+    match decoder.read_to_end(&mut decompressed) {
+        Ok(_) => Ok(decompressed),
+        Err(_) => Ok(data.to_vec()), // If decompression fails, assume data is already uncompressed
+    }
 }

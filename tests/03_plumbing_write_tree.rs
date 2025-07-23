@@ -1,87 +1,77 @@
-use anyhow::Result;
+use assert_cmd::Command;
+use assert_fs::prelude::*;
+use std::process::Command as StdCommand;
 
-use guts::core::cat::{parse_object, parse_tree_body, ParsedObject};
-
+/// Test que guts write-tree produit exactement le même hash que git write-tree
 #[test]
-fn test_parse_tree_body_single_entry() -> Result<()> {
-    // Exemple minimal d'entrée d'un tree Git:
-    // mode = "100644"
-    // nom = "file.txt"
-    // hash = 20 octets arbitraires (ici 0x01, 0x02, ..., 0x14)
+fn test_write_tree_compatibility_with_git() {
+    let temp = assert_fs::TempDir::new().unwrap();
 
-    let mut data = Vec::new();
-    data.extend(b"100644 "); // mode + espace
-    data.extend(b"file.txt"); // nom
-    data.push(0); // null byte
-    data.extend((1u8..=20).collect::<Vec<u8>>()); // hash SHA1 fictif 20 octets
+    // Créer structure avec hiérarchie pour tester la correction
+    temp.child("README.md")
+        .write_str("# Test Project\nCompatibility test.\n")
+        .unwrap();
+    temp.child("src").create_dir_all().unwrap();
+    temp.child("src/main.rs")
+        .write_str("fn main() {\n    println!(\"Hello!\");\n}\n")
+        .unwrap();
+    temp.child("src/utils").create_dir_all().unwrap();
+    temp.child("src/utils/helper.rs")
+        .write_str("pub fn help() {}\n")
+        .unwrap();
 
-    let entries = parse_tree_body(&data)?;
+    // === Git réel ===
+    StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["init"])
+        .output()
+        .unwrap();
+    StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["add", "."])
+        .output()
+        .unwrap();
+    let git_output = StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["write-tree"])
+        .output()
+        .expect("Git must be installed");
+    let git_hash = String::from_utf8_lossy(&git_output.stdout)
+        .trim()
+        .to_string();
 
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].mode, "100644");
-    assert_eq!(entries[0].name, "file.txt");
-    assert_eq!(entries[0].hash, {
-        let mut h = [0u8; 20];
-        for (i, b) in (1u8..=20).enumerate() {
-            h[i] = b;
-        }
-        h
-    });
+    // === Guts ===
+    std::fs::remove_dir_all(temp.path().join(".git")).unwrap();
+    Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success();
+    Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("add")
+        .arg(".")
+        .assert()
+        .success();
+    let guts_output = Command::cargo_bin("guts")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("write-tree")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let guts_hash = String::from_utf8_lossy(&guts_output).trim().to_string();
 
-    Ok(())
-}
+    println!("📊 Write-tree comparison:");
+    println!("   Git:  {}", git_hash);
+    println!("   Guts: {}", guts_hash);
 
-#[test]
-fn test_parse_object_tree() -> Result<()> {
-    // Construire un objet git complet (header + body) simulant un tree à 1 entrée
-    let mut body = Vec::new();
-    body.extend(b"100644 ");
-    body.extend(b"file.txt");
-    body.push(0);
-    body.extend((1u8..=20).collect::<Vec<u8>>());
-
-    let header = format!("tree {}\0", body.len());
-    let mut data = header.into_bytes();
-    data.extend(body);
-
-    // Parse the full object
-    let parsed = parse_object(&data)?;
-
-    match parsed {
-        ParsedObject::Tree(entries) => {
-            assert_eq!(entries.len(), 1);
-            assert_eq!(entries[0].mode, "100644");
-            assert_eq!(entries[0].name, "file.txt");
-            assert_eq!(entries[0].hash, {
-                let mut h = [0u8; 20];
-                for (i, b) in (1u8..=20).enumerate() {
-                    h[i] = b;
-                }
-                h
-            });
-        }
-        _ => panic!("Expected ParsedObject::Tree"),
-    }
-
-    Ok(())
-}
-
-#[test]
-fn test_parse_object_blob() -> Result<()> {
-    // Construire un objet git blob (header + content)
-    let content = b"Hello, world!";
-    let header = format!("blob {}\0", content.len());
-    let mut data = header.into_bytes();
-    data.extend(content);
-
-    let parsed = parse_object(&data)?;
-
-    match parsed {
-        ParsedObject::Blob(bytes) => {
-            assert_eq!(bytes, b"Hello, world!");
-        }
-        _ => panic!("Expected ParsedObject::Blob"),
-    }
-
-    Ok(())
+    assert_eq!(
+        git_hash, guts_hash,
+        "Guts write-tree must produce identical tree hash to Git"
+    );
 }

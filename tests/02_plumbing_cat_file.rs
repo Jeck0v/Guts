@@ -1,71 +1,56 @@
-use std::env;
-use std::{fs, path::PathBuf};
+use assert_cmd::Command;
+use assert_fs::prelude::*;
+use std::process::Command as StdCommand;
 
-use anyhow::{anyhow, Context, Result};
-use clap::Args;
+/// Test que guts cat-file produit exactement la même sortie que git cat-file
+#[test]
+fn test_cat_file_compatibility_with_git() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let file = temp.child("test.txt");
+    file.write_str("Hello, Git compatibility test!\nSecond line.\n")
+        .unwrap();
 
-use guts::core::cat;
+    // Init git repo and create object
+    StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["init"])
+        .output()
+        .unwrap();
+    let hash_output = StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["hash-object", "-w", "test.txt"])
+        .output()
+        .expect("Failed to create git object");
 
-#[derive(Args)]
-pub struct CatFileArgs {
-    /// SHA or partial SHA of the object to read
-    pub sha: String,
-}
+    let hash = String::from_utf8_lossy(&hash_output.stdout)
+        .trim()
+        .to_string();
 
-pub fn run(args: &CatFileArgs) -> Result<()> {
-    let sha = &args.sha;
+    // === Git réel ===
+    let git_output = StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["cat-file", "-p", &hash])
+        .output()
+        .expect("Failed to run git cat-file");
 
-    if sha.len() < 4 {
-        return Err(anyhow!("SHA is too small (need at least 4 characters)"));
-    }
+    let git_content = String::from_utf8_lossy(&git_output.stdout).to_string();
 
-    // Use the standard .git directory
-    let git_dir = env::current_dir()
-        .context("failed to get current directory")?
-        .join(".git");
+    // === Guts ===
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    let guts_output = cmd
+        .current_dir(temp.path())
+        .arg("cat-file")
+        .arg(&hash)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
 
-    if !git_dir.exists() {
-        return Err(anyhow!("no .git directory found at {}", git_dir.display()));
-    }
+    let guts_content = String::from_utf8_lossy(&guts_output).to_string();
 
-    // Get the path to the object file
-    let object_path = cat::get_object_path(&git_dir, sha);
-
-    // Read the object file contents
-    let content = fs::read(&object_path)
-        .with_context(|| format!("failed to read object file at {}", object_path.display()))?;
-
-    // Parse the Git object
-    let parsed_obj = cat::parse_object(&content)?;
-
-    // Print the parsed content based on its type
-    match parsed_obj {
-        cat::ParsedObject::Blob(data) => {
-            // Print blob content as UTF-8 string if possible, else bytes debug
-            match std::str::from_utf8(&data) {
-                Ok(text) => println!("{}", text),
-                Err(_) => println!("{:?}", data),
-            }
-        }
-        cat::ParsedObject::Tree(entries) => {
-            for entry in entries {
-                println!("{} {} {}", entry.mode, entry.name, hex::encode(entry.hash));
-            }
-        }
-        cat::ParsedObject::Commit(data) => {
-            println!("Commit :");
-            println!("tree: {}", data.tree);
-            if let Some(parent) = &data.parent {
-                println!("parent: {}", parent);
-            }
-            println!("message: {}", data.message);
-        }
-
-        cat::ParsedObject::Other(obj_type, data) => {
-            println!("Unknown object type: {}", obj_type);
-            println!("{:?}", data);
-        }
-    }
-
-    Ok(())
+    assert_eq!(
+        git_content, guts_content,
+        "Guts cat-file must produce identical output to Git"
+    );
 }
