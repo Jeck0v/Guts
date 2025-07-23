@@ -15,16 +15,19 @@ pub struct LogArgs {
 /// Entry point for the `guts log` command
 /// Traverses the commit chain from HEAD to root, printing each commit's SHA and first line of message.
 pub fn run(args: &LogArgs) -> Result<String> {
-    // Determine current directory to use
-    let current_dir = args
-        .dir
-        .clone()
-        .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
-
-    // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
-        return Err(anyhow!("fatal: not a git repository"));
+    // Set current directory context for TUI
+    let original_dir = std::env::current_dir()?;
+    if let Some(dir) = &args.dir {
+        std::env::set_current_dir(dir)?;
     }
+    
+    let result = || -> Result<String> {
+        // Check if we're in a git repository
+        if !simple_index::is_git_repository()? {
+            return Err(anyhow!("fatal: not a git repository"));
+        }
+        
+        let current_dir = std::env::current_dir()?;
 
     // Use the standard .git directory
     let git_dir = current_dir.join(".git");
@@ -79,7 +82,13 @@ pub fn run(args: &LogArgs) -> Result<String> {
         }
     }
 
-    Ok(output)
+        Ok(output)
+    }();
+    
+    // Restore original directory
+    std::env::set_current_dir(&original_dir)?;
+    
+    result
 }
 
 

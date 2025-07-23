@@ -8,6 +8,23 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Helper function to execute a closure with a temporary current directory
+/// This is the simple and safe way to handle directory context for TUI
+pub fn with_dir<F, R>(dir: Option<&PathBuf>, f: F) -> Result<R>
+where
+    F: FnOnce() -> Result<R>,
+{
+    if let Some(dir) = dir {
+        let original_dir = std::env::current_dir()?;
+        std::env::set_current_dir(dir)?;
+        let result = f();
+        std::env::set_current_dir(&original_dir)?;
+        result
+    } else {
+        f()
+    }
+}
+
 /// Simple structure for Git index
 /// Stores only "staged" files with their SHA-1 hash
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -34,6 +51,7 @@ impl SimpleIndex {
 
         Ok(index)
     }
+
 
     /// Save index to .git/simple_index.json
     pub fn save(&self) -> Result<()> {
@@ -107,6 +125,7 @@ fn get_simple_index_path() -> Result<PathBuf> {
     let repo_root = find_repo_root()?;
     Ok(repo_root.join(".git").join("simple_index.json"))
 }
+
 
 /// Convert absolute path to relative path from repo root
 fn get_relative_path(file_path: &Path) -> Result<String> {
@@ -245,3 +264,4 @@ fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
         }
     }
 }
+

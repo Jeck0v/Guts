@@ -49,77 +49,85 @@ fn collect_files_recursively(dir: &PathBuf) -> Result<Vec<PathBuf>> {
 /// Main function for the `guts add` command
 /// Adds files to the staging area (index)
 pub fn run(args: &AddArgs) -> Result<String> {
-    // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
-        return Err(anyhow!("fatal: not a git repository"));
+    // Set current directory context for TUI
+    let original_dir = std::env::current_dir()?;
+    if let Some(dir) = &args.dir {
+        std::env::set_current_dir(dir)?;
     }
-
-    let mut added_files = Vec::new();
-    let mut output = String::new();
-
-    // Determine current directory to use
-    let current_dir = args
-        .dir
-        .clone()
-        .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
-
-    // Load .gutsignore matcher
-    let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
-        .unwrap_or_else(|_| IgnoreMatcher::empty());
-
-    // Process each requested file
-    for file_path in &args.files {
-        // Support for "." - add all files from current directory
-        if file_path.to_string_lossy() == "." {
-            let files = collect_files_recursively(&current_dir)?;
-            for file in files {
-                if matcher.is_ignored(&file, &current_dir) {
-                    continue;
-                }
-                simple_index::add_file_to_index(&file)?;
-                added_files.push(file.display().to_string());
-            }
-            continue;
+    
+    let result = || -> Result<String> {
+        // Check if we're in a git repository
+        if !simple_index::is_git_repository()? {
+            return Err(anyhow!("fatal: not a git repository"));
         }
 
-        // Basic checks
-        if !file_path.exists() {
-            return Err(anyhow!(
-                "pathspec '{}' did not match any files",
-                file_path.display()
-            ));
-        }
+        let mut added_files = Vec::new();
+        let mut output = String::new();
+        let current_dir = std::env::current_dir()?;
 
-        if file_path.is_dir() {
-            // If it's a directory, add all files recursively
-            let files = collect_files_recursively(file_path)?;
-            for file in files {
-                if matcher.is_ignored(&file, &current_dir) {
-                    continue;
+        // Load .gutsignore matcher
+        let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
+            .unwrap_or_else(|_| IgnoreMatcher::empty());
+
+        // Process each requested file
+        for file_path in &args.files {
+            // Support for "." - add all files from current directory
+            if file_path.to_string_lossy() == "." {
+                let files = collect_files_recursively(&current_dir)?;
+                for file in files {
+                    if matcher.is_ignored(&file, &current_dir) {
+                        continue;
+                    }
+                    simple_index::add_file_to_index(&file)?;
+                    added_files.push(file.display().to_string());
                 }
-                simple_index::add_file_to_index(&file)?;
-                added_files.push(file.display().to_string());
-            }
-        } else {
-            // Skip if ignored
-            if matcher.is_ignored(file_path, &current_dir) {
                 continue;
             }
-            // Add the file to the JSON index
-            simple_index::add_file_to_index(file_path)?;
-            added_files.push(file_path.display().to_string());
-        }
-    }
 
-    // Confirmation message
-    if added_files.len() == 1 {
-        output.push_str(&format!("Added: {}", added_files[0]));
-    } else {
-        output.push_str(&format!("Added {} files:", added_files.len()));
-        for file in &added_files {
-            output.push_str(&format!("\n  - {}", file));
-        }
-    }
+            // Basic checks
+            if !file_path.exists() {
+                return Err(anyhow!(
+                    "pathspec '{}' did not match any files",
+                    file_path.display()
+                ));
+            }
 
-    Ok(output)
+            if file_path.is_dir() {
+                // If it's a directory, add all files recursively
+                let files = collect_files_recursively(file_path)?;
+                for file in files {
+                    if matcher.is_ignored(&file, &current_dir) {
+                        continue;
+                    }
+                    simple_index::add_file_to_index(&file)?;
+                    added_files.push(file.display().to_string());
+                }
+            } else {
+                // Skip if ignored
+                if matcher.is_ignored(file_path, &current_dir) {
+                    continue;
+                }
+                // Add the file to the JSON index
+                simple_index::add_file_to_index(file_path)?;
+                added_files.push(file_path.display().to_string());
+            }
+        }
+
+        // Confirmation message
+        if added_files.len() == 1 {
+            output.push_str(&format!("Added: {}", added_files[0]));
+        } else {
+            output.push_str(&format!("Added {} files:", added_files.len()));
+            for file in &added_files {
+                output.push_str(&format!("\n  - {}", file));
+            }
+        }
+
+        Ok(output)
+    }();
+    
+    // Restore original directory
+    std::env::set_current_dir(&original_dir)?;
+    
+    result
 }

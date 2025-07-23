@@ -48,10 +48,17 @@ fn remove_file_from_index(file_path: &PathBuf) -> Result<bool> {
 /// Main function for the `guts rm` command
 /// Removes files from working directory and index
 pub fn run(args: &RmArgs) -> Result<String> {
-    // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
-        return Err(anyhow!("fatal: not a git repository"));
+    // Set current directory context for TUI
+    let original_dir = std::env::current_dir()?;
+    if let Some(dir) = &args.dir {
+        std::env::set_current_dir(dir)?;
     }
+    
+    let result = || -> Result<String> {
+        // Check if we're in a git repository
+        if !simple_index::is_git_repository()? {
+            return Err(anyhow!("fatal: not a git repository"));
+        }
 
     let mut removed_files = Vec::new();
     let mut output = String::new();
@@ -100,5 +107,11 @@ pub fn run(args: &RmArgs) -> Result<String> {
         output.pop(); // Remove last newline
     }
 
-    Ok(output)
+        Ok(output)
+    }();
+    
+    // Restore original directory
+    std::env::set_current_dir(&original_dir)?;
+    
+    result
 }
