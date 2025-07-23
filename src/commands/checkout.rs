@@ -188,11 +188,9 @@ fn collect_tracked_paths(
 fn has_uncommitted_changes(git_dir: &Path, current_dir: &Path, tree_sha: &str) -> Result<bool> {
     println!("DEBUG: Checking for uncommitted changes against tree: {}", tree_sha);
     
-    // Get the current HEAD tree SHA for comparison
     let current_head_tree = read_head_tree_sha(git_dir)?;
     println!("DEBUG: Current HEAD tree: {}", current_head_tree);
     
-    // Get tracked files in current HEAD tree (not target tree!)
     let tracked_files = list_files_in_tree(git_dir, &current_head_tree)?;
     println!("DEBUG: Found {} tracked files in current HEAD", tracked_files.len());
     
@@ -202,7 +200,6 @@ fn has_uncommitted_changes(git_dir: &Path, current_dir: &Path, tree_sha: &str) -
     Ok(changed)
 }
 
-// Also add debug to the check function
 fn check_tree_for_changes(
     git_dir: &Path,
     current_dir: &Path,
