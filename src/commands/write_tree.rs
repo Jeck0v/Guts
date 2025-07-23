@@ -12,10 +12,17 @@ pub struct WriteTreeArgs {
 /// New version of write-tree that uses the simple JSON index
 /// Instead of reading the filesystem, reads the index to create the tree
 pub fn run(args: &WriteTreeArgs) -> Result<String> {
-    // Check if we're in a git repository
-    if !simple_index::is_git_repository_from(args.dir.as_ref())? {
-        return Err(anyhow::anyhow!("fatal: not a git repository"));
+    // Set current directory context for TUI
+    let original_dir = std::env::current_dir()?;
+    if let Some(dir) = &args.dir {
+        std::env::set_current_dir(dir)?;
     }
+    
+    let result = || -> Result<String> {
+        // Check if we're in a git repository
+        if !simple_index::is_git_repository()? {
+            return Err(anyhow::anyhow!("fatal: not a git repository"));
+        }
 
     // Load the JSON index
     let index = simple_index::SimpleIndex::load()?;
@@ -26,7 +33,13 @@ pub fn run(args: &WriteTreeArgs) -> Result<String> {
     // Write the tree object and return its hash
     let oid = hash::write_object(&tree)?;
 
-    Ok(oid)
+        Ok(oid)
+    }();
+    
+    // Restore original directory
+    std::env::set_current_dir(&original_dir)?;
+    
+    result
 }
 
 /// Build a Git tree object from the JSON index

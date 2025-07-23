@@ -8,6 +8,23 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Helper function to execute a closure with a temporary current directory
+/// This is the simple and safe way to handle directory context for TUI
+pub fn with_dir<F, R>(dir: Option<&PathBuf>, f: F) -> Result<R>
+where
+    F: FnOnce() -> Result<R>,
+{
+    if let Some(dir) = dir {
+        let original_dir = std::env::current_dir()?;
+        std::env::set_current_dir(dir)?;
+        let result = f();
+        std::env::set_current_dir(&original_dir)?;
+        result
+    } else {
+        f()
+    }
+}
+
 /// Simple structure for Git index
 /// Stores only "staged" files with their SHA-1 hash
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -35,22 +52,6 @@ impl SimpleIndex {
         Ok(index)
     }
 
-    /// Load index from .git/simple_index.json from a specific directory
-    pub fn load_from(start_dir: Option<&PathBuf>) -> Result<Self> {
-        let index_path = get_simple_index_path_from(start_dir)?;
-
-        if !index_path.exists() {
-            return Ok(SimpleIndex::default());
-        }
-
-        let content = fs::read_to_string(&index_path)
-            .with_context(|| format!("unable to read {:?}", index_path))?;
-
-        let index: SimpleIndex =
-            serde_json::from_str(&content).with_context(|| "invalid JSON in index")?;
-
-        Ok(index)
-    }
 
     /// Save index to .git/simple_index.json
     pub fn save(&self) -> Result<()> {
@@ -125,11 +126,6 @@ fn get_simple_index_path() -> Result<PathBuf> {
     Ok(repo_root.join(".git").join("simple_index.json"))
 }
 
-/// Return path to .git/simple_index.json from a specific directory
-fn get_simple_index_path_from(start_dir: Option<&PathBuf>) -> Result<PathBuf> {
-    let repo_root = find_repo_root_from(start_dir)?;
-    Ok(repo_root.join(".git").join("simple_index.json"))
-}
 
 /// Convert absolute path to relative path from repo root
 fn get_relative_path(file_path: &Path) -> Result<String> {
@@ -269,100 +265,3 @@ fn decompress_object(data: &[u8]) -> Result<Vec<u8>> {
     }
 }
 
-/// Find Git repository root from a specific directory
-pub fn find_repo_root_from(start_dir: Option<&PathBuf>) -> Result<PathBuf> {
-    let mut current = match start_dir {
-        Some(dir) => dir.clone(),
-        None => std::env::current_dir().with_context(|| "unable to get current directory")?,
-    };
-
-    loop {
-        let git_dir = current.join(".git");
-        if git_dir.exists() && git_dir.is_dir() {
-            return Ok(current);
-        }
-
-        match current.parent() {
-            Some(parent) => current = parent.to_path_buf(),
-            None => return Err(anyhow!("not a git repository")),
-        }
-    }
-}
-
-/// Check if we're in a Git repository from a specific directory
-pub fn is_git_repository_from(start_dir: Option<&PathBuf>) -> Result<bool> {
-    match find_repo_root_from(start_dir) {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
-    }
-}
-
-/// Add a file to the index from a specific directory context
-pub fn add_file_to_index_from(file_path: &Path, start_dir: Option<&PathBuf>) -> Result<()> {
-    // Set current directory context if provided
-    let original_dir = std::env::current_dir()?;
-    
-    if let Some(dir) = start_dir {
-        std::env::set_current_dir(dir)?;
-    }
-    
-    // Use existing add_file_to_index function
-    let result = add_file_to_index(file_path);
-    
-    // Restore original directory
-    std::env::set_current_dir(&original_dir)?;
-    
-    result
-}
-
-/// Get the files committed in the current HEAD from a specific directory
-/// Returns a HashMap: relative file path -> SHA-1 hash
-pub fn get_committed_files_from(start_dir: Option<&PathBuf>) -> Result<HashMap<String, String>> {
-    let repo_root = find_repo_root_from(start_dir)?;
-    let git_dir = repo_root.join(".git");
-    
-    // Read HEAD to get current commit
-    let head_path = git_dir.join("HEAD");
-    if !head_path.exists() {
-        // No commits yet
-        return Ok(HashMap::new());
-    }
-    
-    let head_content = fs::read_to_string(&head_path)?;
-    let head_content = head_content.trim();
-    
-    // Get the commit hash
-    let commit_hash = if head_content.starts_with("ref: ") {
-        // HEAD points to a branch
-        let ref_path = head_content.strip_prefix("ref: ").unwrap();
-        let ref_file = git_dir.join(ref_path);
-        
-        if !ref_file.exists() {
-            // Branch exists but no commits yet
-            return Ok(HashMap::new());
-        }
-        
-        fs::read_to_string(ref_file)?.trim().to_string()
-    } else {
-        // Detached HEAD, direct commit hash
-        head_content.to_string()
-    };
-    
-    // Read the commit object to get the tree hash
-    let commit_obj_path = cat::get_object_path(&git_dir, &commit_hash);
-    if !commit_obj_path.exists() {
-        return Ok(HashMap::new());
-    }
-    
-    let commit_data = fs::read(&commit_obj_path)?;
-    let decompressed = decompress_object(&commit_data)?;
-    let parsed = cat::parse_object(&decompressed)?;
-    
-    let tree_hash = match parsed {
-        cat::ParsedObject::Commit(commit) => commit.tree,
-        _ => return Err(anyhow!("HEAD does not point to a commit object")),
-    };
-    
-    // Read the tree object to get the files
-    get_files_from_tree(&git_dir, &tree_hash, "")
-}

@@ -14,20 +14,23 @@ pub struct StatusObject {
 
 /// Entry point for the `guts status` command
 pub fn run(args: &StatusObject) -> Result<String> {
-    let current_dir = args
-        .dir
-        .clone()
-        .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
-
-    if !simple_index::is_git_repository_from(Some(&current_dir))? {
-        return Ok("fatal: not a git repository".to_string());
+    // Set current directory context for TUI
+    let original_dir = std::env::current_dir()?;
+    if let Some(dir) = &args.dir {
+        std::env::set_current_dir(dir)?;
     }
+    
+    let result = || -> Result<String> {
+        if !simple_index::is_git_repository()? {
+            return Ok("fatal: not a git repository".to_string());
+        }
 
-    let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
-        .unwrap_or_else(|_| IgnoreMatcher::empty());
+        let current_dir = std::env::current_dir()?;
+        let matcher = IgnoreMatcher::from_gutsignore(&current_dir)
+            .unwrap_or_else(|_| IgnoreMatcher::empty());
 
-    let committed_files = simple_index::get_committed_files_from(Some(&current_dir))?;
-    let index = simple_index::SimpleIndex::load_from(Some(&current_dir))?;
+        let committed_files = simple_index::get_committed_files()?;
+        let index = simple_index::SimpleIndex::load()?;
     let work_files = list_working_dir_files(&current_dir, &matcher)?;
 
     let current_branch = read_head::get_current_branch()
@@ -121,11 +124,17 @@ pub fn run(args: &StatusObject) -> Result<String> {
         output.push_str("\n");
     }
 
-    if staged_changes.is_empty() && unstaged_changes.is_empty() && untracked_files.is_empty() {
-        output.push_str("nothing to commit, working tree clean\n");
-    }
+        if staged_changes.is_empty() && unstaged_changes.is_empty() && untracked_files.is_empty() {
+            output.push_str("nothing to commit, working tree clean\n");
+        }
 
-    Ok(output)
+        Ok(output)
+    }();
+    
+    // Restore original directory
+    std::env::set_current_dir(&original_dir)?;
+    
+    result
 }
 
 /// List all working directory files, excluding ignored and .git files
@@ -153,9 +162,9 @@ fn list_working_dir_files(current_dir: &PathBuf, matcher: &IgnoreMatcher) -> Res
     Ok(files)
 }
 
-fn get_relative_path(file_path: &PathBuf, current_dir: &PathBuf) -> Result<String> {
-    // Find repo root from current directory context
-    let repo_root = simple_index::find_repo_root_from(Some(current_dir))?;
+fn get_relative_path(file_path: &PathBuf, _current_dir: &PathBuf) -> Result<String> {
+    // Find repo root from current working directory
+    let repo_root = simple_index::find_repo_root()?;
     let relative = file_path
         .strip_prefix(&repo_root)
         .map_err(|_| anyhow::anyhow!("file is not in the repository"))?;
