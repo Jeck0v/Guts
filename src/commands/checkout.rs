@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use clap::Args;
 use crate::core::resolve_parse::resolve_ref;
 use flate2::read::ZlibDecoder;
@@ -254,7 +254,6 @@ fn collect_tracked_paths(
         paths.insert(full_path.clone());
 
         if mode_str == "40000" {
-            // directory: recurse
             let sha_hex = sha_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
             collect_tracked_paths(git_dir, &sha_hex, full_path, paths)?;
         }
@@ -327,7 +326,6 @@ fn check_tree_for_changes(
             } else {
                 println!("DEBUG: Untracked file: {:?}", relative_path);
                 *changed = true;
-                // TO DOOOOO FAIRE EN SORTE QUE CA STOP EN DISANT QU'IL Y A DES FICHIERS NOT COMMITED
             }
         }
     }
