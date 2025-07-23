@@ -49,7 +49,7 @@ fn remove_file_from_index(file_path: &PathBuf) -> Result<bool> {
 /// Removes files from working directory and index
 pub fn run(args: &RmArgs) -> Result<String> {
     // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
+    if !simple_index::is_git_repository_from(args.dir.as_ref())? {
         return Err(anyhow!("fatal: not a git repository"));
     }
 

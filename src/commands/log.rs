@@ -22,7 +22,7 @@ pub fn run(args: &LogArgs) -> Result<String> {
         .unwrap_or_else(|| std::env::current_dir().expect("failed to get current directory"));
 
     // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
+    if !simple_index::is_git_repository_from(args.dir.as_ref())? {
         return Err(anyhow!("fatal: not a git repository"));
     }
 

@@ -35,7 +35,7 @@ pub fn run(args: &CommitArgs) -> Result<String> {
 
 fn run_commit(args: &CommitArgs) -> Result<String> {
     // Check if we're in a git repository
-    if !simple_index::is_git_repository()? {
+    if !simple_index::is_git_repository_from(args.dir.as_ref())? {
         return Err(anyhow::anyhow!("fatal: not a git repository"));
     }
 
