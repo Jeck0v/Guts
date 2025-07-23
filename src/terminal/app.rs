@@ -6,7 +6,6 @@ use std::process::{Command, Stdio};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::Stdout;
 
-
 #[derive(Debug, Clone)]
 pub struct CommandResult {
     pub command: String,
@@ -293,31 +292,6 @@ impl App {
         }
 
         if command.starts_with("cd") {
-            let parts: Vec<&str> = command.split_whitespace().collect();
-            let target_dir = if parts.len() > 1 {
-                std::path::PathBuf::from(&self.current_dir).join(parts[1])
-            } else {
-                std::env::var("HOME")
-                    .unwrap_or_else(|_| self.current_dir.clone())
-                    .into()
-            };
-
-            let result = match target_dir.canonicalize() {
-                Ok(path) => {
-                    self.current_dir = path.to_string_lossy().to_string();
-                    CommandResult {
-                        command: command.clone(),
-                        output: format!("Changed directory to {}", self.current_dir),
-                        error: None,
-                    }
-                }
-                Err(e) => CommandResult {
-                    command: command.clone(),
-                    output: String::new(),
-                    error: Some(format!("cd error: {}", e)),
-                },
-            };
-
             let result = self.handle_cd_command(&command);
             self.command_history.push(result);
             self.finalize_command();
@@ -336,8 +310,6 @@ impl App {
             return Ok(());
         }
 
-        // Sinon, commande système via shell
-        let _cleaned_dir = if self.current_dir.starts_with(r"\\?\") {
         // sys command
         let result = self.execute_shell_command(&command);
         self.command_history.push(result);
