@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    add, cat_file, commit, commit_tree, hash_object, init, log, rev_parse, rm, show_ref, status,
+    add, cat_file, commit, commit_tree, hash_object, init, log, rev_parse, rm, show_ref, status, checkout,
     write_tree,ls_tree,ls_files
 };
 
@@ -58,6 +58,9 @@ pub enum Commands {
     /// Show all refs and their hashes
     ShowRef(show_ref::ShowRefArgs),
 
+    /// Switch to existing commit or branch / create a new branch
+    Checkout(checkout::CheckoutObject),
+    
     /// List all files in the index
     LsFiles(ls_files::LsFilesArgs),
 

@@ -579,7 +579,22 @@ impl App {
                                 error: Some(e.to_string()),
                             }),
                         }
-                    }
+                    },
+                    Commands::Checkout(checkout_object) => {
+                        match guts::commands::checkout::run(&checkout_object) {
+                            Ok(out) => Ok(CommandResult {
+                                
+                                command: command.to_string(),
+                                output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    },
                     Commands::LsTree(mut ls_tree_args) => {
                         ls_tree_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::ls_tree::run(&ls_tree_args) {
@@ -608,8 +623,7 @@ impl App {
                                 error: Some(e.to_string()),
                             }),
                         }
-                    }
-
+                    },
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),

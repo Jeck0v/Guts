@@ -3,6 +3,7 @@ mod terminal;
 use anyhow::Result;
 use clap::Parser;
 use guts::cli::{Cli, Commands};
+use sha1::digest::Output;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -73,6 +74,10 @@ fn main() -> Result<()> {
         }
         Commands::ShowRef(args) => {
             let output = guts::commands::show_ref::run(&args)?;
+            println!("{}", output);
+        }
+        Commands::Checkout(args) => {
+            let output = guts::commands::checkout::run(&args)?;
             println!("{}", output);
         }
         Commands::Tui => terminal::run_app()?,  
