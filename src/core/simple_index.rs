@@ -212,11 +212,15 @@ fn get_files_from_tree(git_dir: &Path, tree_hash: &str, prefix: &str) -> Result<
             format!("{}/{}", prefix, entry.name)
         };
         
-        // For simplicity, we only handle regular files (mode 100644)
-        // In a full implementation, we would recursively handle subdirectories
         if entry.mode == "100644" {
+            // Regular file
             let hash_hex = hex::encode(entry.hash);
             files.insert(file_path, hash_hex);
+        } else if entry.mode == "40000" {
+            // Directory - recursively get files from subtree
+            let subtree_hash = hex::encode(entry.hash);
+            let subfiles = get_files_from_tree(git_dir, &subtree_hash, &file_path)?;
+            files.extend(subfiles);
         }
     }
     

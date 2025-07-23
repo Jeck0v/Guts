@@ -1,46 +1,56 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
+use std::process::Command as StdCommand;
 
+/// Test que guts cat-file produit exactement la même sortie que git cat-file
 #[test]
-fn test_cat_file_round_trip() {
-    // Setup temp directory with test file
+fn test_cat_file_compatibility_with_git() {
     let temp = assert_fs::TempDir::new().unwrap();
     let file = temp.child("test.txt");
-    let original_content = "Hello, Git cat-file!\n";
-    file.write_str(original_content).unwrap();
+    file.write_str("Hello, Git compatibility test!\nSecond line.\n")
+        .unwrap();
 
-    // Initialize repository using porcelain command
-    Command::cargo_bin("guts")
-        .unwrap()
+    // Init git repo and create object
+    StdCommand::new("git")
         .current_dir(temp.path())
-        .args(&["init"])
-        .assert()
-        .success();
+        .args(["init"])
+        .output()
+        .unwrap();
+    let hash_output = StdCommand::new("git")
+        .current_dir(temp.path())
+        .args(["hash-object", "-w", "test.txt"])
+        .output()
+        .expect("Failed to create git object");
 
-    // Create object with guts hash-object
-    let hash_output = Command::cargo_bin("guts")
-        .unwrap()
+    let hash = String::from_utf8_lossy(&hash_output.stdout)
+        .trim()
+        .to_string();
+
+    // === Git réel ===
+    let git_output = StdCommand::new("git")
         .current_dir(temp.path())
-        .args(&["hash-object", "test.txt"])
+        .args(["cat-file", "-p", &hash])
+        .output()
+        .expect("Failed to run git cat-file");
+
+    let git_content = String::from_utf8_lossy(&git_output.stdout).to_string();
+
+    // === Guts ===
+    let mut cmd = Command::cargo_bin("guts").unwrap();
+    let guts_output = cmd
+        .current_dir(temp.path())
+        .arg("cat-file")
+        .arg(&hash)
         .assert()
         .success()
         .get_output()
         .stdout
         .clone();
-    let hash = String::from_utf8_lossy(&hash_output).trim().to_string();
 
-    // Read it back with guts cat-file
-    let cat_output = Command::cargo_bin("guts")
-        .unwrap()
-        .current_dir(temp.path())
-        .args(&["cat-file", &hash])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-    let retrieved_content = String::from_utf8_lossy(&cat_output);
+    let guts_content = String::from_utf8_lossy(&guts_output).to_string();
 
-    // Should get back the original content
-    assert_eq!(original_content.trim(), retrieved_content.trim(), "Cat-file should return original content");
+    assert_eq!(
+        git_content, guts_content,
+        "Guts cat-file must produce identical output to Git"
+    );
 }
