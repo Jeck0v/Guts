@@ -6,7 +6,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
-use std::io;
+use std::io::{self, Stdout};
 
 pub fn run_app() -> Result<()> {
     // setup TUI
@@ -20,7 +20,7 @@ pub fn run_app() -> Result<()> {
     let mut app = App::new();
     let res = run_app_loop(&mut terminal, &mut app);
 
-    // restore tui
+    // restore terminal
     disable_raw_mode()?;
     execute!(
         terminal.backend_mut(),
@@ -36,8 +36,9 @@ pub fn run_app() -> Result<()> {
     Ok(())
 }
 
-fn run_app_loop<B: ratatui::backend::Backend>(
-    terminal: &mut Terminal<B>,
+// Editor gestion
+fn run_app_loop(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     app: &mut App,
 ) -> Result<()> {
     loop {
@@ -46,6 +47,30 @@ fn run_app_loop<B: ratatui::backend::Backend>(
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 app.handle_key_event(key)?;
+
+                if let Some(cmd) = app.last_executed_command.take() {
+                    if cmd.starts_with("nano") || cmd.starts_with("vim") || cmd.starts_with("vi") {
+                        app.handle_editor_command(terminal, &cmd)?;
+
+                        // restores TUI
+                        enable_raw_mode()?;
+                        execute!(
+                                io::stdout(),
+                                EnterAlternateScreen,
+                                EnableMouseCapture
+                        )?;
+                        let backend = CrosstermBackend::new(io::stdout());
+                        *terminal = Terminal::new(backend)?;
+                        terminal.clear()?;
+
+                        //  Reset input state
+                        app.input.clear();
+                        app.cursor_position = 0;
+                        app.force_redraw = true;
+
+                        continue;
+                    }
+                }
             }
         }
 
