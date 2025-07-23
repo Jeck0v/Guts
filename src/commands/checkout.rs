@@ -13,10 +13,19 @@ pub struct CheckoutObject {
     pub name: Option<String>,
 
     #[arg(short = 'b', long)]
-    pub branch_name: Option<String>
+    pub branch_name: Option<String>,
+
+    #[arg(last = true)]
+    pub dir: Option<PathBuf>,
 }
 
 pub fn run(args: &CheckoutObject) -> Result<String> {
+
+    if dir.is_file() {
+        files.push(dir.clone());
+        return Ok(files);
+    }
+
     let current_dir = std::env::current_dir().context("Cannot get the current directory")?;
     let git_dir = current_dir.join(".git");
 
