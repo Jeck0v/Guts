@@ -4,8 +4,9 @@ use crate::core::resolve_parse::resolve_ref;
 use flate2::read::ZlibDecoder;
 use std::collections::HashSet;
 use std::fs::{self, File};
-use std::io::{Cursor, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use crate::core::parse_tree::{parse_tree};
 
 #[derive(Args)]
 pub struct CheckoutObject {
@@ -19,26 +20,19 @@ pub fn run(args: &CheckoutObject) -> Result<String> {
     let current_dir = std::env::current_dir().context("Cannot get the current directory")?;
     let git_dir = current_dir.join(".git");
 
-    let fallback = read_head_ref(&git_dir)?
-        .unwrap_or("HEAD (detached)".to_string());
+    let target_ref = if let Some(name) = &args.name {
+        name.clone()
+    } else {
+        read_head_ref(&git_dir)?
+            .ok_or_else(|| anyhow::anyhow!("HEAD is detached. Please specify a branch or commit to checkout"))?
+    };
 
-    let target_ref = args.name.as_deref().unwrap_or(fallback.as_str());
-
-    println!("{:?}", target_ref);
-
-    let sha = resolve_ref(&git_dir, target_ref)?;
+    let sha = resolve_ref(&git_dir, &target_ref)?;
     println!("Resolved SHA: {}", sha);
 
-    let path_obj = git_dir.join("objects").join(&sha[..2]).join(&sha[2..]);
-
-    if !path_obj.exists() {
-        anyhow::bail!("Git object file not found at {:?}", path_obj);
-    }
+    let commit_content = read_and_parse_git_object(&git_dir, &sha)?;
     
-    let decompressed_bytes = read_git_object(&path_obj)?;
-    
-    let (_header, commit_content) = split_header_and_content(&decompressed_bytes)?;
-    let commit_str = std::str::from_utf8(commit_content)
+    let commit_str = std::str::from_utf8(&commit_content)
         .context("Commit content is not valid UTF-8")?;
     let tree_sha = extract_tree_sha(commit_str)?;
     
@@ -58,11 +52,11 @@ pub fn run(args: &CheckoutObject) -> Result<String> {
                 .with_context(|| format!("failed to update HEAD to point to {}", branch_name))?;
 
         } else {
-            let possible_branch_path = git_dir.join("refs").join("heads").join(target_ref);
+            let possible_branch_path = git_dir.join("refs").join("heads").join(&target_ref);
             if possible_branch_path.exists() {
                 let head_path = git_dir.join("HEAD");
-                std::fs::write(&head_path, format!("ref: refs/heads/{}\n", target_ref))
-                    .with_context(|| format!("failed to update HEAD to point to {}", target_ref))?;
+                std::fs::write(&head_path, format!("ref: refs/heads/{}\n", &target_ref))
+                    .with_context(|| format!("failed to update HEAD to point to {}", &target_ref))?;
             }
         }
 
@@ -70,10 +64,8 @@ pub fn run(args: &CheckoutObject) -> Result<String> {
     
         println!("Tree SHA: {}", tree_sha);
     
-        let tree_path = git_dir.join("objects").join(&tree_sha[..2]).join(&tree_sha[2..]);
-        let tree_bytes = read_git_object(&tree_path)?;
-        let (_header, tree_content) = split_header_and_content(&tree_bytes)?;
-        parse_tree_object(git_dir, tree_content, current_dir)?;
+        let tree_content = read_and_parse_git_object(&git_dir, &tree_sha)?;
+        parse_tree_object(&git_dir, &tree_content, current_dir)?;
     
         Ok(tree_sha)
     }
@@ -106,53 +98,19 @@ fn read_git_object(path: &Path) -> Result<Vec<u8>> {
     Ok(decompressed)
 }
 
-fn parse_tree_object(git_dir: PathBuf, tree_bytes: &[u8], target_dir: PathBuf) -> Result<()> {
-    let git_dir = &git_dir;
+fn parse_tree_object(git_dir: &PathBuf, tree_bytes: &[u8], target_dir: PathBuf) -> Result<()> {
+    for entry in parse_tree(&tree_bytes)? {
+        let full_path = target_dir.join(&entry.filename);
 
-    let mut cursor = Cursor::new(tree_bytes);
-
-    while (cursor.position() as usize) < tree_bytes.len() {
-        let mut mode = Vec::new();
-        loop {
-            let mut byte = [0u8; 1];
-            cursor.read_exact(&mut byte)?;
-            if byte[0] == b' ' {
-                break;
-            }
-            mode.push(byte[0]);
-        }
-
-        let mut filename = Vec::new();
-        loop {
-            let mut byte = [0u8; 1];
-            cursor.read_exact(&mut byte)?;
-            if byte[0] == 0 {
-                break;
-            }
-            filename.push(byte[0]);
-        }
-
-        let mut sha_bytes = [0u8; 20];
-        cursor.read_exact(&mut sha_bytes)?;
-
-        let mode_str = String::from_utf8_lossy(&mode);
-        let filename_str = String::from_utf8_lossy(&filename);
-        let sha_hex = sha_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-        let full_path = target_dir.join(&*filename_str);
-
-        if mode_str == "40000" {
+        if entry.mode == "40000" {
             fs::create_dir_all(&full_path)?;
-            let tree_path = git_dir.join("objects").join(&sha_hex[..2]).join(&sha_hex[2..]);
-            let tree_bytes  = read_git_object(&tree_path)?;
-            let (_header, sub_tree_content) = split_header_and_content(&tree_bytes)?;
-            parse_tree_object(git_dir.to_path_buf(), sub_tree_content, full_path)?;
+            let sub_tree_content = read_and_parse_git_object(&git_dir, &entry.sha)?;
+            parse_tree_object(&git_dir, &sub_tree_content, full_path)?;
         } else {
-            let blob_path = git_dir.join("objects").join(&sha_hex[..2]).join(&sha_hex[2..]);
-            let blob_bytes = read_git_object(&blob_path)?;
-            let (_header, blob_content) = split_header_and_content(&blob_bytes)?;
+            let blob_content = read_and_parse_git_object(&git_dir, &entry.sha)?;
             fs::create_dir_all(&full_path.parent().unwrap())?;
             let mut file = File::create(&full_path)?;
-            file.write_all(blob_content)?;
+            file.write_all(&blob_content)?;
         }
     }
 
@@ -215,47 +173,16 @@ fn collect_tracked_paths(
     base_path: PathBuf,
     paths: &mut HashSet<PathBuf>,
 ) -> Result<()> {
-    let tree_path = git_dir.join("objects").join(&tree_sha[..2]).join(&tree_sha[2..]);
-    let tree_bytes = read_git_object(&tree_path)?;
-    let (_header, tree_content) = split_header_and_content(&tree_bytes)?;
+    let tree_content = read_and_parse_git_object(&git_dir, &tree_sha)?;
 
-    let mut cursor = Cursor::new(tree_content);
-
-    while (cursor.position() as usize) < tree_content.len() {
-        let mut mode = Vec::new();
-        loop {
-            let mut byte = [0u8; 1];
-            cursor.read_exact(&mut byte)?;
-            if byte[0] == b' ' {
-                break;
-            }
-            mode.push(byte[0]);
-        }
-
-        let mut filename = Vec::new();
-        loop {
-            let mut byte = [0u8; 1];
-            cursor.read_exact(&mut byte)?;
-            if byte[0] == 0 {
-                break;
-            }
-            filename.push(byte[0]);
-        }
-
-        let mut sha_bytes = [0u8; 20];
-        cursor.read_exact(&mut sha_bytes)?;
-
-        let mode_str = String::from_utf8_lossy(&mode);
-        let filename_str = String::from_utf8_lossy(&filename);
-
+    for entry in parse_tree(&tree_content)? {
         let mut full_path = base_path.clone();
-        full_path.push(&*filename_str);
+        full_path.push(&entry.filename);
 
         paths.insert(full_path.clone());
 
-        if mode_str == "40000" {
-            let sha_hex = sha_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-            collect_tracked_paths(git_dir, &sha_hex, full_path, paths)?;
+        if entry.mode == "40000" {
+            collect_tracked_paths(git_dir, &entry.sha, full_path, paths)?;
         }
     }
 
@@ -268,12 +195,6 @@ fn has_uncommitted_changes(git_dir: &Path, current_dir: &Path, tree_sha: &str) -
     // Get the current HEAD tree SHA for comparison
     let current_head_tree = read_head_tree_sha(git_dir)?;
     println!("DEBUG: Current HEAD tree: {}", current_head_tree);
-    
-    // If we're checking against the same tree as HEAD, no changes by definition
-    if current_head_tree == tree_sha {
-        println!("DEBUG: Target tree is same as HEAD tree - no changes");
-        return Ok(false);
-    }
     
     // Get tracked files in current HEAD tree (not target tree!)
     let tracked_files = list_files_in_tree(git_dir, &current_head_tree)?;
@@ -353,49 +274,18 @@ fn list_files_recursive(
     prefix: PathBuf,
     files: &mut HashSet<PathBuf>,
 ) -> Result<()> {
-    let tree_path = git_dir.join("objects").join(&tree_sha[..2]).join(&tree_sha[2..]);
-    let tree_bytes = read_git_object(&tree_path)?;
-    let (_header, tree_content) = split_header_and_content(&tree_bytes)?;
+    let tree_content = read_and_parse_git_object(git_dir, &tree_sha)?;
 
-    let mut cursor = Cursor::new(tree_content);
+    for entry in parse_tree(&tree_content)? {
+        let current_path = prefix.join(&entry.filename);
 
-    while (cursor.position() as usize) < tree_content.len() {
-        let mut mode = Vec::new();
-        loop {
-            let mut byte = [0u8; 1];
-            cursor.read_exact(&mut byte)?;
-            if byte[0] == b' ' {
-                break;
-            }
-            mode.push(byte[0]);
-        }
-
-        let mut filename = Vec::new();
-        loop {
-            let mut byte = [0u8; 1];
-            cursor.read_exact(&mut byte)?;
-            if byte[0] == 0 {
-                break;
-            }
-            filename.push(byte[0]);
-        }
-
-        let mut sha_bytes = [0u8; 20];
-        cursor.read_exact(&mut sha_bytes)?;
-
-        let mode_str = String::from_utf8_lossy(&mode);
-        let filename_str = String::from_utf8_lossy(&filename);
-        let sha_hex = sha_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-
-        let current_path = prefix.join(&*filename_str);
-
-        if mode_str == "40000" {
-            list_files_recursive(git_dir, &sha_hex, current_path, files)?;
+        if entry.mode == "40000" {
+            list_files_recursive(git_dir, &entry.sha, current_path, files)?;
         } else {
             files.insert(current_path);
         }
     }
-
+    
     Ok(())
 }
 
@@ -405,59 +295,22 @@ fn find_blob_sha_for_path(git_dir: &Path, relative_path: &Path) -> Result<Option
     for component in relative_path.components() {
         let component_str = component.as_os_str().to_string_lossy();
 
-        let tree_path = git_dir.join("objects").join(&current_tree_sha[..2]).join(&current_tree_sha[2..]);
-        let tree_bytes = read_git_object(&tree_path)?;
-        let (_header, tree_content) = split_header_and_content(&tree_bytes)?;
+        let tree_content = read_and_parse_git_object(git_dir, &current_tree_sha)?;
 
-        let mut cursor = Cursor::new(tree_content);
-        let mut found_sha = None;
-        let mut found_mode = None;
+        let entries = parse_tree(&tree_content)?;
 
-        while (cursor.position() as usize) < tree_content.len() {
-            let mut mode = Vec::new();
-            loop {
-                let mut byte = [0u8; 1];
-                cursor.read_exact(&mut byte)?;
-                if byte[0] == b' ' {
-                    break;
-                }
-                mode.push(byte[0]);
-            }
+        let found_entry = entries.iter().find(|entry| entry.filename == component_str);
 
-            let mut filename = Vec::new();
-            loop {
-                let mut byte = [0u8; 1];
-                cursor.read_exact(&mut byte)?;
-                if byte[0] == 0 {
-                    break;
-                }
-                filename.push(byte[0]);
-            }
-
-            let mut sha_bytes = [0u8; 20];
-            cursor.read_exact(&mut sha_bytes)?;
-
-            let filename_str = String::from_utf8_lossy(&filename);
-
-            if filename_str == component_str {
-                found_sha = Some(sha_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>());
-                found_mode = Some(String::from_utf8_lossy(&mode).to_string());
-                break;
-            }
-        }
-
-        if let Some(sha) = found_sha {
+        if let Some(entry) = found_entry {
             if component == relative_path.components().last().unwrap() {
-                return Ok(Some(sha));
-            } else if let Some(mode) = found_mode {
-                if mode == "40000" {
-                    current_tree_sha = sha;
+                return Ok(Some(entry.sha.clone()));
+            } else if entry.mode == "40000" {
+                    current_tree_sha = entry.sha.clone();
                 } else {
                     return Ok(None);
                 }
-            }
-        } else {
-            return Ok(None);
+            } else {
+                return Ok(None);
         }
     }
 
@@ -473,11 +326,18 @@ fn read_head_tree_sha(git_dir: &Path) -> Result<String> {
         .context("Failed to read HEAD ref file")?;
     let commit_sha = commit_sha.trim();
 
-    let commit_obj_path = git_dir.join("objects").join(&commit_sha[..2]).join(&commit_sha[2..]);
-    let commit_bytes = read_git_object(&commit_obj_path)?;
-    let (_header, commit_content) = split_header_and_content(&commit_bytes)?;
-    let commit_str = std::str::from_utf8(commit_content)
+    let commit_content = read_and_parse_git_object(git_dir, &commit_sha)?;
+
+    let commit_str = std::str::from_utf8(&commit_content)
         .context("Commit content is not valid UTF-8")?;
 
     extract_tree_sha(commit_str)
+}
+
+
+fn read_and_parse_git_object(git_dir: &Path, sha: &str) -> Result<Vec<u8>> {
+    let obj_path = git_dir.join("objects").join(&sha[..2]).join(&sha[2..]);
+    let bytes = read_git_object(&obj_path)?;
+    let (_header, content) = split_header_and_content(&bytes)?;
+    Ok(content.to_vec())
 }
