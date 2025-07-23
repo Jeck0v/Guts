@@ -65,7 +65,7 @@ You now have a shortcut + the application in the PATH.
 ### `git status`  :white_check_mark:
 - Shows staged and unstaged changes.
 
-### `git checkout [-b] <branch|sha>`
+### `git checkout [-b] <branch|sha>` :white_check_mark:
 - Switch to existing commit or branch.
 - `-b <branch>` creates a new branch.
 - Change HEAD, update working dir, check for conflicts
@@ -76,20 +76,20 @@ You now have a shortcut + the application in the PATH.
 - `--hard`: + reset working directory
 - ❌ No file-specific reset.
 
-### `git log`
+### `git log` :white_check_mark:
 - Print commit history from HEAD (one-line summary ok).
 
-### `git ls-files`
+### `git ls-files` :white_check_mark:
 - List all files in the index.
 
-### `git ls-tree <tree_sha>`
+### `git ls-tree <tree_sha>` :white_check_mark:
 - List contents of a tree object.
 
-### `git rev-parse <ref>`
+### `git rev-parse <ref>` :white_check_mark:
 - Convert ref/branch/HEAD into SHA-1.
 - ❌ No complex selectors
 
-### `git show-ref`
+### `git show-ref` :white_check_mark:
 - List all refs and their hashes.
 
 ---
@@ -103,7 +103,7 @@ You now have a shortcut + the application in the PATH.
 
 ---
 
-## 📄 Gitignore
+## 📄 Gitignore :white_check_mark:
 
 - Handle `.gitignore`
 - Use simple glob-style matching (e.g., `*.log`, `build/`)
