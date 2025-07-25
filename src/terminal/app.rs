@@ -734,6 +734,20 @@ impl App {
                             }),
                         }
                     },
+                    Commands::Merge(merge_args) => {
+                        match guts::commands::merge::run(&merge_args) {
+                            Ok(_) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: format!("Merged branch {:?}", merge_args.branch),
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    },
                     Commands::Tui => Ok(CommandResult {
                         command: command.to_string(),
                         output: String::new(),

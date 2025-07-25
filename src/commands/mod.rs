@@ -15,3 +15,4 @@ pub mod write_tree; // Version JSON (nouvelle)
 pub mod write_tree_filesystem_version; // Version filesystem (préservée)
 pub mod rev_parse;
 pub mod checkout;
+pub mod merge;
