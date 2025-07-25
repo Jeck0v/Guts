@@ -13,10 +13,20 @@ pub struct CheckoutObject {
     pub name: Option<String>,
 
     #[arg(short = 'b', long)]
-    pub branch_name: Option<String>
+    pub branch_name: Option<String>,
+
+    #[arg(last = true)]
+    pub dir: Option<PathBuf>,
 }
 
 pub fn run(args: &CheckoutObject) -> Result<String> {
+
+    let original_dir = std::env::current_dir()?;
+
+    if let Some(dir) = &args.dir {
+        std::env::set_current_dir(dir)?;
+    }
+
     let current_dir = std::env::current_dir().context("Cannot get the current directory")?;
     let git_dir = current_dir.join(".git");
 
@@ -28,7 +38,6 @@ pub fn run(args: &CheckoutObject) -> Result<String> {
     };
 
     let sha = resolve_ref(&git_dir, &target_ref)?;
-    println!("Resolved SHA: {}", sha);
 
     let commit_content = read_and_parse_git_object(&git_dir, &sha)?;
     
@@ -62,11 +71,12 @@ pub fn run(args: &CheckoutObject) -> Result<String> {
 
         clean_working_directory(&current_dir, &git_dir, &tree_sha)?;
     
-        println!("Tree SHA: {}", tree_sha);
     
         let tree_content = read_and_parse_git_object(&git_dir, &tree_sha)?;
         parse_tree_object(&git_dir, &tree_content, current_dir)?;
     
+        std::env::set_current_dir(&original_dir)?;
+        
         Ok(tree_sha)
     }
 }
@@ -186,13 +196,10 @@ fn collect_tracked_paths(
 }
 
 fn has_uncommitted_changes(git_dir: &Path, current_dir: &Path, tree_sha: &str) -> Result<bool> {
-    println!("DEBUG: Checking for uncommitted changes against tree: {}", tree_sha);
     
     let current_head_tree = read_head_tree_sha(git_dir)?;
-    println!("DEBUG: Current HEAD tree: {}", current_head_tree);
     
     let tracked_files = list_files_in_tree(git_dir, &current_head_tree)?;
-    println!("DEBUG: Found {} tracked files in current HEAD", tracked_files.len());
     
     let mut changed = false;
     check_tree_for_changes(git_dir, current_dir, current_dir, &tracked_files, &mut changed)?;
@@ -221,7 +228,6 @@ fn check_tree_for_changes(
             check_tree_for_changes(git_dir, current_dir, &path, tracked_files, changed)?;
         } else {
             let is_tracked = tracked_files.contains(&relative_path);
-            println!("DEBUG: Checking file {:?}, tracked: {}", relative_path, is_tracked);
 
             if is_tracked {
                 if let Some(blob_sha) = find_blob_sha_for_path(git_dir, &relative_path)? {
@@ -231,14 +237,12 @@ fn check_tree_for_changes(
                     let current_content = fs::read(&path)?;
 
                     if current_content != content {
-                        println!("DEBUG: File modified: {:?}", path);
                         *changed = true;
                     }
                 } else {
                     println!("DEBUG: Could not find blob SHA for tracked file: {:?}", relative_path);
                 }
             } else {
-                println!("DEBUG: Untracked file: {:?}", relative_path);
                 *changed = true;
             }
         }
@@ -247,7 +251,6 @@ fn check_tree_for_changes(
     for tracked_file in tracked_files {
         let full_path = current_dir.join(tracked_file);
         if !full_path.exists() {
-            println!("DEBUG: File deleted: {:?}", full_path);
             *changed = true;
         }
     }

@@ -690,7 +690,8 @@ impl App {
                             }),
                         }
                     },
-                    Commands::Checkout(checkout_object) => {
+                    Commands::Checkout(mut checkout_object) => {
+                        checkout_object.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::checkout::run(&checkout_object) {
                             Ok(out) => Ok(CommandResult {
 
