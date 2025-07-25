@@ -690,7 +690,8 @@ impl App {
                             }),
                         }
                     },
-                    Commands::Checkout(checkout_object) => {
+                    Commands::Checkout(mut checkout_object) => {
+                        checkout_object.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::checkout::run(&checkout_object) {
                             Ok(out) => Ok(CommandResult {
 
@@ -725,6 +726,21 @@ impl App {
                             Ok(out) => Ok(CommandResult {
                                 command: command.to_string(),
                                 output: out,
+                                error: None,
+                            }),
+                            Err(e) => Ok(CommandResult {
+                                command: command.to_string(),
+                                output: String::new(),
+                                error: Some(e.to_string()),
+                            }),
+                        }
+                    },
+                    Commands::Merge(mut merge_args) => {
+                        merge_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
+                        match guts::commands::merge::run(&merge_args) {
+                            Ok(_) => Ok(CommandResult { 
+                                command: command.to_string(),
+                                output: format!("Merged branch {:?}", merge_args.name),
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {

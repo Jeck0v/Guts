@@ -76,7 +76,7 @@ pub fn run(args: &LogArgs) -> Result<String> {
         output.push_str(&format!("{} {}\n", current_hash, first_line));
 
         if let Some(parent_hash) = parent {
-            current_hash = parent_hash;
+            current_hash = parent_hash[0].clone();
         } else {
             break;
         }

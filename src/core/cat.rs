@@ -142,7 +142,7 @@ pub fn parse_tree_body(data: &[u8]) -> Result<Vec<TreeEntry>> {
 fn parse_commit_body(body: &[u8]) -> Result<Commit> {
     let text = std::str::from_utf8(body)?;
     let mut tree = String::new();
-    let mut parent = None;
+    let mut parent = Vec::new();
     let mut message = String::new();
     let mut author = String::new();
     let mut committer = String::new();
@@ -168,7 +168,7 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
         if let Some(rest) = line.strip_prefix("tree ") {
             tree = rest.to_string();
         } else if let Some(rest) = line.strip_prefix("parent ") {
-            parent = Some(rest.to_string());
+            parent.push(rest.to_string());
         } else if let Some(rest) = line.strip_prefix("author ") {
             // Format: "Name <email> timestamp timezone"
             let parts: Vec<&str> = rest.rsplitn(2, ' ').collect();
@@ -195,6 +195,8 @@ fn parse_commit_body(body: &[u8]) -> Result<Commit> {
             }
         }
     }
+
+    let parent = if parent.is_empty() { None } else { Some(parent) };
 
     if tree.is_empty() {
         return Err(anyhow!("commit object missing 'tree' field"));

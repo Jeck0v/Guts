@@ -1,3 +1,4 @@
+use std::clone::Clone;
 
 /// Trait representing a Git object that can be serialized and hashed.
 /// Any Git object (blob, tree, commit, etc.) should implement this trait.
@@ -25,6 +26,7 @@ pub trait GitObject {
 
 /// Represents a single entry in a Git tree object.
 /// Each entry corresponds to a file or a directory in the tree.
+#[derive(Clone)]
 pub struct TreeEntry {
     pub mode: String,   // File mode as a string, e.g. "100644" for normal files
     pub name: String,   // File or directory name
@@ -76,7 +78,7 @@ impl GitObject for Tree {
 
 pub struct Commit {
     pub tree: String,
-    pub parent: Option<String>,
+    pub parent: Option<Vec<String>>,
     pub message: String,
     pub author: String,
     pub committer: String,
@@ -94,8 +96,10 @@ impl GitObject for Commit {
 
         content.extend(format!("tree {}\n", self.tree).as_bytes());
 
-        if let Some(ref p) = self.parent {
-            content.extend(format!("parent {}\n", p).as_bytes());
+        if let Some(ref parents) = self.parent {
+            for p in parents {
+                content.extend(format!("parent {}\n", p).as_bytes());
+            }
         }
 
         let timezone = "+0000";

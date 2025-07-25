@@ -9,7 +9,7 @@ use std::path::PathBuf;
 pub struct CommitObject {
     pub tree: String,
     #[arg(short = 'p', long)]
-    pub parent: Option<String>,
+    pub parent: Option<Vec<String>>,
     #[arg(short = 'm', long)]
     pub message: String,
     /// Author name and email in format "Name <email>"
@@ -44,9 +44,16 @@ pub fn run(args: &CommitObject) -> Result<String> {
     let author_date = args.author_date.unwrap_or(now);
     let committer_date = args.committer_date.unwrap_or(author_date);
 
+    let parent = match &args.parent {
+        Some(vec) if !vec.is_empty() => Some(vec.clone()),
+        _ => None,
+    };
+
+
+
     let commit = Commit {
         tree: args.tree.clone(),
-        parent: args.parent.clone(),
+        parent: parent.clone(),
         message: args.message.clone(),
         author: args.author.clone(),
         committer: args.committer.clone(),

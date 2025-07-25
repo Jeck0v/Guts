@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TreeEntry {
     pub mode: String,
     pub filename: String,
