@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    add, cat_file, checkout, commit, commit_tree, hash_object, init, log, ls_files, ls_tree, merge::{self, MergeObject}, rev_parse, rm, show_ref, status, write_tree
+    add, cat_file, checkout, commit, commit_tree, hash_object, init, log, ls_files, ls_tree, merge, rev_parse, rm, show_ref, status, write_tree
 };
 
 #[derive(Parser)]
@@ -64,7 +64,7 @@ pub enum Commands {
     LsFiles(ls_files::LsFilesArgs),
 
     // Merge 2 branch together
-    Merge(merge::MergeObject),
+    Merge(merge::MergeArgs),
 
     /// Launch graphical terminal UI
     Tui,

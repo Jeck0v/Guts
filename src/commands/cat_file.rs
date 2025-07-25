@@ -48,8 +48,10 @@ pub fn run(args: &CatFileArgs) -> Result<String> {
         ParsedObject::Commit(data) => {
             let mut out = String::new();
             out += &format!("tree {}\n", data.tree);
-            if let Some(parent) = &data.parent {
-                out += &format!("parent {}\n", parent);
+            if let Some(parents) = &data.parent {
+                for p in parents {
+                    out += &format!("parent {}\n", p);
+                }
             }
             out += &format!("author {} {} +0000\n", data.author, data.author_date);
             out += &format!("committer {} {} +0000\n", data.committer, data.committer_date);

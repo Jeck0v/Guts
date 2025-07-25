@@ -735,11 +735,12 @@ impl App {
                             }),
                         }
                     },
-                    Commands::Merge(merge_args) => {
+                    Commands::Merge(mut merge_args) => {
+                        merge_args.dir = Some(std::path::PathBuf::from(&self.current_dir));
                         match guts::commands::merge::run(&merge_args) {
-                            Ok(_) => Ok(CommandResult {
+                            Ok(_) => Ok(CommandResult { 
                                 command: command.to_string(),
-                                output: format!("Merged branch {:?}", merge_args.branch),
+                                output: format!("Merged branch {:?}", merge_args.name),
                                 error: None,
                             }),
                             Err(e) => Ok(CommandResult {

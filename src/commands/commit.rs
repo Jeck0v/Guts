@@ -50,12 +50,16 @@ fn run_commit(args: &CommitArgs) -> Result<String> {
     let tree_hash = write_tree::run(&write_tree_args)?;
 
     // 2. Get the current HEAD commit (parent) if it exists
-    let parent = get_current_head()?;
+    let parent = match get_current_head()? {
+        Some(p) => Some(vec![p]),
+        None => None,
+    };
+
 
     // 3. Create commit object using commit-tree
     let commit_tree_args = commit_tree::CommitObject {
         tree: tree_hash.clone(),
-        parent,
+        parent: parent,
         message: args.message.clone(),
         author: "guts <guts@example.com>".to_string(),
         committer: "guts <guts@example.com>".to_string(),

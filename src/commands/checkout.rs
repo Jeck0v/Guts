@@ -81,7 +81,7 @@ pub fn run(args: &CheckoutObject) -> Result<String> {
     }
 }
 
-fn extract_tree_sha(commit_text: &str) -> Result<String> {
+pub fn extract_tree_sha(commit_text: &str) -> Result<String> {
     for line in commit_text.lines() {
         if let Some(rest) = line.strip_prefix("tree ") {
             return Ok(rest.trim().to_string());
@@ -108,7 +108,7 @@ fn read_git_object(path: &Path) -> Result<Vec<u8>> {
     Ok(decompressed)
 }
 
-fn parse_tree_object(git_dir: &PathBuf, tree_bytes: &[u8], target_dir: PathBuf) -> Result<()> {
+pub fn parse_tree_object(git_dir: &PathBuf, tree_bytes: &[u8], target_dir: PathBuf) -> Result<()> {
     for entry in parse_tree(&tree_bytes)? {
         let full_path = target_dir.join(&entry.filename);
 
@@ -143,7 +143,7 @@ fn read_head_ref(git_dir: &Path) -> Result<Option<String>> {
     }
 }
 
-fn clean_working_directory(current_dir: &Path, git_dir: &Path, tree_sha: &str) -> Result<()> {
+pub fn clean_working_directory(current_dir: &Path, git_dir: &Path, tree_sha: &str) -> Result<()> {
     let mut tracked_paths = HashSet::new();
     collect_tracked_paths(git_dir, tree_sha, PathBuf::new(), &mut tracked_paths)?;
 
@@ -331,7 +331,7 @@ fn read_head_tree_sha(git_dir: &Path) -> Result<String> {
 }
 
 
-fn read_and_parse_git_object(git_dir: &Path, sha: &str) -> Result<Vec<u8>> {
+pub fn read_and_parse_git_object(git_dir: &Path, sha: &str) -> Result<Vec<u8>> {
     let obj_path = git_dir.join("objects").join(&sha[..2]).join(&sha[2..]);
     let bytes = read_git_object(&obj_path)?;
     let (_header, content) = split_header_and_content(&bytes)?;
