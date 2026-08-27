@@ -1,7 +1,9 @@
 # <p align="center">Git from Scratch in Rust</p>
 ## Project Scope
 
-The project implements a subset of Git commands, both low-level **(plumbing)** and user-facing **(porcelain)**. The goal was to ensure that they behave similarly to real Git, within clearly defined constraints.
+Guts reimplements a focused subset of Git to explore how version control works under the hood: object hashing and storage, the index, commits, trees, references, branches and merges.
+
+The project exposes these features through familiar guts commands and a TUI built with Ratatui. It is an educational project rather than a drop-in replacement for Git, but the implemented commands are designed to behave similarly within the project's defined scope.
 
 ### TUI installation for windows:
 Go to `windows-installer` and just take the file `Guts_Installer.exe` and execute it. <br>
